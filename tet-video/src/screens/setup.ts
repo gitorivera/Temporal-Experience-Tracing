@@ -2,6 +2,7 @@
 // El formulario completo (SPEC §6) se construye en la fase 4.
 import type { MountScreen } from '../main';
 import { APP_VERSION } from '../state';
+import { mountPlayerLab } from './playerLab';
 
 const TOKENS = ['--bg', '--panel', '--ink', '--muted', '--line', '--sun', '--sea', '--trace', '--ok', '--warn', '--danger'];
 
@@ -10,7 +11,7 @@ export const mountSetup: MountScreen = (root, go) => {
   el.className = 'researcher';
   el.innerHTML = `
     <h1>Trazado de experiencia (TET)</h1>
-    <p class="lead">Versión ${APP_VERSION}. Base del proyecto (fase 1): estilos, fuentes locales y funcionamiento sin conexión.</p>
+    <p class="lead">Versión ${APP_VERSION}. Fase 3: reproductores de video y de canvas. Más abajo siguen las muestras de estilos de la fase 1.</p>
 
     <div class="card">
       <h2>Tipografía</h2>
@@ -75,5 +76,8 @@ export const mountSetup: MountScreen = (root, go) => {
     });
   }
 
-  return () => {};
+  // Banco de pruebas de la fase 3, justo debajo del título para que se vea sin desplazarse.
+  const unmountLab = mountPlayerLab(el.querySelector('.lead')!);
+
+  return () => unmountLab();
 };
