@@ -1,4 +1,5 @@
 // Estado de la sesión y configuración por defecto (SPEC §6).
+import type { Sync, VideoEvent } from './data/events';
 
 export type Condicion = 'RM' | 'Tablet';
 export type ModoRespuesta = 'trazo' | 'deslizador';
@@ -23,6 +24,49 @@ export interface Config {
   /** Resolución de exportación en segundos (≥ 0,1). */
   resolucionS: number;
   dimensiones: Dimension[];
+}
+
+/** Cambio de valor registrado durante una pasada (trazo crudo). */
+export interface RawPoint {
+  pasada: number;
+  /** Tiempo del video (s). */
+  t: number;
+  v: number;
+  /** Milisegundos desde el inicio de la sesión. */
+  ms: number;
+}
+
+/** Resultado de una dimensión (o de la práctica) al pulsar «Listo». */
+export interface DimensionRecord {
+  dimension: Dimension;
+  modo: ModoRespuesta;
+  duracionS: number;
+  /** Buffer a HZ; NaN donde no hay dato. */
+  valores: number[];
+  trazoCrudo: RawPoint[];
+  toques: number;
+  pasadas: number;
+  saltosVideo: number;
+  tiempoRespuestaS: number | null;
+}
+
+/** Todo lo necesario para generar los archivos de salida (SPEC §8.3). */
+export interface SessionData {
+  participante: string;
+  condicion: Condicion;
+  /** ISO-8601 con el desfase de la hora local, p. ej. 2026-10-05T15:54:46.123-05:00. */
+  inicio: string;
+  /** Nombre del archivo de video; null si se usó la grabación de ejemplo. */
+  grabacion: string | null;
+  sincronizacion: Sync;
+  eventos: VideoEvent[];
+  modo: ModoRespuesta;
+  velocidad: Velocidad;
+  ordenAleatorio: boolean;
+  resolucionS: number;
+  practica: DimensionRecord | null;
+  /** En el orden en que el niño las respondió. */
+  dimensiones: DimensionRecord[];
 }
 
 export const APP_VERSION: string = __APP_VERSION__;
