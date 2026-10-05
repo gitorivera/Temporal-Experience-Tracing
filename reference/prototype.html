@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trazado de experiencia con video (TET)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;800&display=swap">
+<style>
+:root{
+  --bg:#eaf2f8; --panel:#ffffff; --ink:#1b2a4a; --muted:#52607a; --line:#c9d6e3;
+  --sun:#ffb703; --sun-ink:#3b2a00; --sea:#1d6f93; --trace:#c92a62; --ok:#2b7a3b; --warn:#9a5b00;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1a2e; --panel:#172540; --ink:#e8eef7; --muted:#a9b6ca; --line:#2e4166;
+    --sun:#ffc43d; --sun-ink:#2a1e00; --sea:#5bb8da; --trace:#ff7aa5; --ok:#6fcf86; --warn:#ffb35c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1a2e; --panel:#172540; --ink:#e8eef7; --muted:#a9b6ca; --line:#2e4166;
+  --sun:#ffc43d; --sun-ink:#2a1e00; --sea:#5bb8da; --trace:#ff7aa5; --ok:#6fcf86; --warn:#ffb35c;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.45}
+h1,h2,h3,.big{font-family:'Baloo 2','Nunito',system-ui,sans-serif;line-height:1.1;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+[hidden]{display:none !important}
+
+/* ---------- Setup (investigador) ---------- */
+#setup{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+#setup h1{font-size:2.1rem;margin-bottom:4px}
+#setup .lead{color:var(--muted);max-width:68ch;margin:0 0 24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+.card h2{font-size:1.35rem;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 18px}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.95rem}
+label.f small,.hint{font-weight:400;color:var(--muted);font-size:.88rem}
+input[type=text],input[type=number],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:42px}
+input[type=file]{font-size:.92rem;max-width:100%}
+.check{display:flex;align-items:center;gap:10px;font-weight:600;min-height:40px}
+.check input{width:22px;height:22px}
+.status{font-size:.9rem;color:var(--muted);margin-top:4px}
+.status.ok{color:var(--ok)} .status.warn{color:var(--warn)}
+.dims{display:flex;flex-direction:column;gap:10px}
+.dimrow{display:grid;grid-template-columns:1fr 2fr 1fr 1fr auto;gap:8px;align-items:end}
+.dimrow input{width:100%}
+@media (max-width:760px){.dimrow{grid-template-columns:1fr 1fr}.dimrow .q{grid-column:1/-1}}
+.btn{border:none;border-radius:999px;padding:12px 22px;font-weight:800;min-height:48px;background:var(--panel);border:2px solid var(--line)}
+.btn.primary{background:var(--sun);color:var(--sun-ink);border-color:var(--sun)}
+.btn.sea{background:var(--sea);color:#fff;border-color:var(--sea)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.88em}
+pre.sample{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font-size:.85rem;margin:8px 0 0}
+
+/* ---------- Pantalla del niño ---------- */
+#child{height:100%;display:flex;flex-direction:column;padding:12px 18px 14px;gap:10px}
+.top{display:flex;align-items:center;gap:14px}
+.top .q{font-size:clamp(1.5rem,3.4vw,2.4rem);flex:1}
+.pill{font-weight:800;font-size:.95rem;padding:6px 14px;border-radius:999px;background:var(--panel);border:2px solid var(--line);white-space:nowrap}
+.pill.practice{background:var(--sun);color:var(--sun-ink);border-color:var(--sun)}
+.stage{flex:0 1 auto;display:flex;justify-content:center;min-height:0}
+.stage video,.stage canvas{max-height:38vh;max-width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;display:block}
+.stage canvas{width:auto;height:38vh}
+.track{display:grid;grid-template-columns:76px 1fr;grid-template-rows:auto 1fr;gap:6px 10px;flex:1 1 auto;min-height:200px}
+.track.slider{grid-template-columns:76px 1fr 96px}
+.ylab{grid-row:2;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:6px 0;text-align:center;font-weight:800;font-size:.85rem;color:var(--muted)}
+.ylab .dot{border-radius:50%;background:var(--trace);display:block;margin:0 auto 2px}
+.scrubwrap{grid-column:2}
+#scrub{width:100%;height:58px;display:block;touch-action:none}
+.graphwrap{grid-column:2;grid-row:2;position:relative;min-height:0}
+#graph{width:100%;height:100%;display:block;touch-action:none;border-radius:12px;background:var(--panel);border:2px solid var(--line)}
+.vslider{grid-column:3;grid-row:2;position:relative;border-radius:48px;background:linear-gradient(to top,var(--panel),var(--trace));border:2px solid var(--line);touch-action:none}
+.vslider .thumb{position:absolute;left:50%;width:76px;height:76px;margin-left:-38px;margin-top:-38px;border-radius:50%;background:var(--sun);border:5px solid var(--panel);box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.bottom{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bottom .spacer{flex:1}
+.bottom .btn{font-size:1.15rem;min-height:58px;padding:12px 26px}
+.msg{font-weight:700;color:var(--warn)}
+
+/* overlay de inicio de dimensión */
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,20,40,.55);padding:20px;z-index:5}
+.overlay .box{background:var(--panel);border-radius:22px;padding:32px 30px;max-width:680px;width:100%;text-align:center;border:3px solid var(--sun)}
+.overlay .box .big{font-size:clamp(1.8rem,4.2vw,2.8rem);margin-bottom:12px}
+.overlay .box p{font-size:1.2rem;margin:0 0 22px;color:var(--muted)}
+.overlay .btn{font-size:1.3rem;min-height:64px;padding:14px 40px}
+
+/* ---------- Fin ---------- */
+#done{max-width:980px;margin:0 auto;padding:40px 20px 60px}
+#done .thanks{text-align:center;padding:40px 10px}
+#done .thanks .big{font-size:clamp(2.4rem,6vw,4rem)}
+#done details{margin-top:28px}
+#done summary{font-weight:800;cursor:pointer;padding:8px 0}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.minis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:14px 0}
+.minis figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.minis canvas{width:100%;height:110px;display:block}
+.minis figcaption{font-weight:700;font-size:.9rem;margin-bottom:6px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP ================= -->
+<main id="setup">
+  <h1>Trazado de experiencia con video</h1>
+  <p class="lead">Prototipo de Temporal Experience Tracing para niños: el niño ve la grabación de su partida y dibuja, dimensión por dimensión, cómo se sentía en cada momento. Esta pantalla es para el investigador.</p>
+
+  <section class="card">
+    <h2>Sesión</h2>
+    <div class="grid2">
+      <label class="f">Código del participante<input type="text" id="cfgPid" placeholder="P01" autocomplete="off"></label>
+      <label class="f">Condición jugada
+        <select id="cfgCond"><option value="RM">Realidad mixta</option><option value="Tablet">Tablet</option></select>
+      </label>
+      <label class="f">Modo de respuesta
+        <select id="cfgMode"><option value="trazo">Trazado continuo sobre la gráfica</option><option value="deslizador">Deslizador lateral</option></select>
+        <small>En ambos el video corre sin pausas y la línea avanza sola; el niño solo sube o baja. Puedes compararlos en el piloto.</small>
+      </label>
+      <label class="f" id="rateWrap">Velocidad de la repetición
+        <select id="cfgRate"><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select>
+        <small>Más rápido acorta la sesión, pero exige más al niño.</small>
+      </label>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <label class="check"><input type="checkbox" id="cfgShuffle" checked>Orden aleatorio de dimensiones</label>
+      <label class="check"><input type="checkbox" id="cfgPractice" checked>Ensayo de práctica con la pelota</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Grabación y eventos</h2>
+    <div class="grid2">
+      <label class="f">Video de la partida
+        <input type="file" id="cfgVideo" accept="video/*">
+        <small>Si no cargas video, se usa una grabación de ejemplo de 2 minutos.</small>
+        <span class="status" id="videoStatus"></span>
+      </label>
+      <label class="f">Eventos del juego (CSV, opcional)
+        <input type="file" id="cfgEvents" accept=".csv,.tsv,.txt,text/csv">
+        <span class="status" id="eventsStatus"></span>
+      </label>
+      <label class="f">Momento del destello de sincronización en el video (s)
+        <input type="number" id="cfgSync" value="0" step="0.01" min="0">
+        <small>Segundo del video donde aparece el destello que el juego marca en LSL.</small>
+      </label>
+      <label class="f">Resolución de la exportación (s)
+        <input type="number" id="cfgStep" value="1" step="0.5" min="0.1">
+        <small>Ajústala a tus ventanas del índice de engagement.</small>
+      </label>
+    </div>
+    <p class="hint" style="margin:14px 0 0">Formato del CSV de eventos: una columna de tiempo (en segundos de LSL o del juego), una de etiqueta y, opcionalmente, un ícono. Si una fila se llama <code>sync</code>, su tiempo se alinea con el destello y se calcula también el tiempo LSL de cada punto del trazo.</p>
+<pre class="sample">tiempo,evento,icono
+1532.40,sync,⚡
+1535.10,inicio nivel 1,🚩
+1561.80,acierto,⭐
+1590.25,error,❌</pre>
+  </section>
+
+  <section class="card">
+    <h2>Dimensiones</h2>
+    <p class="hint" style="margin:0 0 12px">Una idea por dimensión, sin escalas bipolares. Usa palabras que un niño entienda.</p>
+    <div class="dims" id="dims"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="addDim" type="button">Agregar dimensión</button>
+      <button class="btn ghost" id="resetDims" type="button">Restaurar ejemplo</button>
+    </div>
+  </section>
+
+  <section class="card" id="savedCard" hidden>
+    <h2>Sesiones guardadas en este dispositivo</h2>
+    <p class="hint" style="margin:0 0 10px">Cada dimensión se guarda automáticamente al terminarla. Descarga los archivos y luego borra la sesión de aquí.</p>
+    <div class="tablewrap"><table id="savedTable"></table></div>
+    <p class="status" id="savedMsg"></p>
+  </section>
+
+  <div class="row">
+    <button class="btn primary" id="startBtn" type="button">Comenzar sesión</button>
+    <span class="status warn" id="startMsg"></span>
+  </div>
+</main>
+
+<!-- ================= NIÑO ================= -->
+<main id="child" hidden>
+  <div class="top">
+    <h2 class="q" id="qText"></h2>
+    <span class="pill" id="progress"></span>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="track" id="track">
+    <div class="scrubwrap"><canvas id="scrub" aria-label="Línea de tiempo del video. Toca para ir a un momento."></canvas></div>
+    <div class="ylab" aria-hidden="true">
+      <div><span class="dot" style="width:30px;height:30px"></span><span id="yHigh"></span></div>
+      <div><span class="dot" style="width:18px;height:18px;opacity:.7"></span></div>
+      <div><span class="dot" style="width:8px;height:8px;opacity:.5"></span><span id="yLow"></span></div>
+    </div>
+    <div class="graphwrap"><canvas id="graph" aria-label="Área para dibujar la línea"></canvas></div>
+    <div class="vslider" id="vslider" hidden aria-label="Deslizador de intensidad"><div class="thumb" id="vthumb"></div></div>
+  </div>
+  <div class="bottom">
+    <button class="btn sea" id="playBtn" type="button">▶ Ver video</button>
+    <button class="btn" id="clearBtn" type="button">Borrar línea</button>
+    <button class="btn sea" id="rateRunBtn" type="button" hidden>▶ Empezar</button>
+    <span class="spacer"></span>
+    <span class="msg" id="childMsg"></span>
+    <button class="btn" id="keepBtn" type="button" hidden>Seguir dibujando</button>
+    <button class="btn primary" id="nextBtn" type="button">Listo</button>
+  </div>
+</main>
+
+<div class="overlay" id="intro" hidden>
+  <div class="box">
+    <div class="big" id="introQ"></div>
+    <p id="introP"></p>
+    <button class="btn primary" id="introGo" type="button">¡Vamos!</button>
+  </div>
+</div>
+
+<!-- ================= FIN ================= -->
+<main id="done" hidden>
+  <div class="thanks">
+    <div class="big">¡Terminaste! Gracias por jugar.</div>
+  </div>
+  <details open>
+    <summary>Resumen para el investigador</summary>
+    <div class="tablewrap"><table id="sumTable"></table></div>
+    <p class="hint" id="practiceNote"></p>
+    <div class="minis" id="minis"></div>
+    <div class="row">
+      <button class="btn primary" id="dlCsv" type="button">CSV por ventanas</button>
+      <button class="btn" id="dlHz" type="button">CSV a 10 Hz</button>
+      <button class="btn" id="dlRaw" type="button">CSV de toques</button>
+      <button class="btn" id="dlJson" type="button">JSON completo</button>
+      <button class="btn ghost" id="newSession" type="button">Nueva sesión</button>
+    </div>
+    <p class="status" id="dlMsg"></p>
+  </details>
+</main>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+
+const DEFAULT_DIMS = [
+  {name:'Diversión', question:'¿Cuánto te estabas divirtiendo?', low:'Nada', high:'Muchísimo'},
+  {name:'Esfuerzo', question:'¿Cuánto esfuerzo estabas haciendo?', low:'Nada', high:'Muchísimo'},
+  {name:'Aburrimiento', question:'¿Qué tan aburrido estabas?', low:'Nada', high:'Muchísimo'},
+  {name:'Pensar en otra cosa', question:'¿Cuánto pensabas en cosas que no eran el juego?', low:'Nada', high:'Muchísimo'}
+];
+const PRACTICE = {name:'Práctica', question:'¿Qué tan rápido iba la pelota?', low:'Lento', high:'Rapidísimo', practice:true};
+const HZ = 10;
+
+const S = {
+  videoFile:null, videoURL:null, videoDuration:null,
+  rawEvents:[], syncRow:null,
+  events:[], syncLSL:null, syncVideo:0,
+  cfg:null, queue:[], idx:0, results:[], practiceResult:null,
+  mainPlayer:null, practicePlayer:null, player:null, trace:null,
+  sessionStart:null
+};
+
+/* ======================= SETUP ======================= */
+function renderDims(list){
+  const box = $('#dims'); box.innerHTML = '';
+  list.forEach((d,i) => {
+    const row = document.createElement('div'); row.className = 'dimrow';
+    row.innerHTML =
+      '<label class="f">Nombre<input type="text" data-k="name"></label>' +
+      '<label class="f q">Pregunta para el niño<input type="text" data-k="question"></label>' +
+      '<label class="f">Abajo<input type="text" data-k="low"></label>' +
+      '<label class="f">Arriba<input type="text" data-k="high"></label>' +
+      '<button class="btn ghost" type="button" aria-label="Quitar dimensión">Quitar</button>';
+    row.querySelectorAll('input').forEach(inp => { inp.value = d[inp.dataset.k] || ''; });
+    row.querySelector('button').onclick = () => { const l = readDims(); l.splice(i,1); renderDims(l); };
+    box.appendChild(row);
+  });
+}
+function readDims(){
+  return [...document.querySelectorAll('.dimrow')].map(r => {
+    const o = {}; r.querySelectorAll('input').forEach(inp => o[inp.dataset.k] = inp.value.trim()); return o;
+  });
+}
+$('#addDim').onclick = () => { const l = readDims(); l.push({name:'',question:'',low:'Nada',high:'Muchísimo'}); renderDims(l); };
+$('#resetDims').onclick = () => renderDims(DEFAULT_DIMS.map(d => ({...d})));
+
+
+(function loadSaved(){
+  const saved = store.get('tetVideoCfg');
+  renderDims(saved && Array.isArray(saved.dims) && saved.dims.length ? saved.dims : DEFAULT_DIMS.map(d => ({...d})));
+  if (saved){
+    if (saved.mode) $('#cfgMode').value = saved.mode;
+    if (saved.rate) $('#cfgRate').value = String(saved.rate);
+    if (typeof saved.shuffle === 'boolean') $('#cfgShuffle').checked = saved.shuffle;
+    if (typeof saved.practice === 'boolean') $('#cfgPractice').checked = saved.practice;
+    if (saved.step) $('#cfgStep').value = saved.step;
+  }
+})();
+
+function getDuration(video){
+  return new Promise(resolve => {
+    const done = () => {
+      if (isFinite(video.duration) && video.duration > 0){ resolve(video.duration); return true; }
+      return false;
+    };
+    video.addEventListener('loadedmetadata', function onMeta(){
+      video.removeEventListener('loadedmetadata', onMeta);
+      if (done()) return;
+      // Videos de MediaRecorder (webm) reportan duración infinita: forzar el cálculo.
+      video.addEventListener('durationchange', function onDur(){
+        if (done()){ video.removeEventListener('durationchange', onDur); video.currentTime = 0; }
+      });
+      video.currentTime = 1e101;
+    });
+    video.addEventListener('error', () => resolve(null), {once:true});
+  });
+}
+
+$('#cfgVideo').onchange = async (e) => {
+  const f = e.target.files && e.target.files[0];
+  const st = $('#videoStatus');
+  if (S.videoURL) URL.revokeObjectURL(S.videoURL);
+  S.videoFile = null; S.videoURL = null; S.videoDuration = null;
+  if (!f){ st.textContent = ''; return; }
+  st.className = 'status'; st.textContent = 'Leyendo video…';
+  const url = URL.createObjectURL(f);
+  const probe = document.createElement('video');
+  probe.preload = 'metadata'; probe.muted = true; probe.src = url;
+  const d = await getDuration(probe);
+  if (!d){ st.className = 'status warn'; st.textContent = 'No se pudo leer este video. Prueba con MP4 (H.264) o WebM.'; URL.revokeObjectURL(url); return; }
+  S.videoFile = f; S.videoURL = url; S.videoDuration = d;
+  st.className = 'status ok'; st.textContent = f.name + ' · ' + fmt(d);
+};
+
+function parseEvents(text){
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const first = lines[0];
+  const delim = first.includes('\t') ? '\t' : (first.split(';').length > first.split(',').length ? ';' : ',');
+  let rows = lines.map(l => l.split(delim).map(c => c.trim().replace(/^"|"$/g,'')));
+  let ti = 0, li = 1, ii = -1;
+  if (isNaN(parseFloat(rows[0][0])) ){
+    const h = rows.shift().map(c => c.toLowerCase());
+    const find = names => h.findIndex(c => names.includes(c));
+    const t = find(['tiempo','time','t','timestamp','lsl','lsl_time','tiempo_lsl','segundos','seg','s']);
+    const l = find(['evento','event','label','marker','marcador','etiqueta','nombre']);
+    const i = find(['icono','icon','emoji']);
+    if (t >= 0) ti = t; if (l >= 0) li = l; ii = i;
+  }
+  return rows.map(r => ({t: parseFloat(String(r[ti]).replace(',','.')), label: r[li] || '', icon: ii >= 0 ? (r[ii] || '') : ''}))
+             .filter(e => isFinite(e.t));
+}
+$('#cfgEvents').onchange = async (e) => {
+  const f = e.target.files && e.target.files[0];
+  const st = $('#eventsStatus');
+  S.rawEvents = []; S.syncRow = null;
+  if (!f){ st.textContent = ''; return; }
+  try {
+    const ev = parseEvents(await f.text());
+    if (!ev.length){ st.className = 'status warn'; st.textContent = 'No encontré filas con tiempo numérico.'; return; }
+    S.syncRow = ev.find(x => /^(sync|sincron)/i.test(x.label)) || null;
+    S.rawEvents = ev.filter(x => x !== S.syncRow);
+    st.className = 'status ok';
+    st.textContent = S.rawEvents.length + ' eventos' + (S.syncRow ? ' · fila de sincronización encontrada' : ' · sin fila sync: los tiempos se toman relativos al destello');
+  } catch(err){ st.className = 'status warn'; st.textContent = 'No se pudo leer el archivo.'; }
+};
+
+function buildEvents(duration){
+  S.syncVideo = parseFloat($('#cfgSync').value) || 0;
+  S.syncLSL = S.syncRow ? S.syncRow.t : null;
+  const base = S.syncRow ? S.syncRow.t : 0;
+  return S.rawEvents.map(e => ({ t: S.syncVideo + (e.t - base), label: e.label, icon: e.icon || iconFor(e.label) }))
+                    .filter(e => e.t >= 0 && e.t <= duration);
+}
+function iconFor(label){
+  const l = (label || '').toLowerCase();
+  if (/acier|correct|hit|ok/.test(l)) return '⭐';
+  if (/error|fall|miss|fail/.test(l)) return '❌';
+  if (/inicio|start|nivel|level/.test(l)) return '🚩';
+  if (/fin|end/.test(l)) return '🏁';
+  if (/premio|recomp|reward/.test(l)) return '🎁';
+  return '◆';
+}
+
+/* ======================= PLAYERS ======================= */
+class VirtualPlayer {
+  constructor(duration, drawFn){
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 960; this.canvas.height = 540;
+    this.ctx = this.canvas.getContext('2d');
+    this.duration = duration; this.drawFn = drawFn;
+    this._t = 0; this.paused = true; this.playbackRate = 1; this.onended = null;
+    this._tick = this._tick.bind(this);
+    this.draw();
+  }
+  get el(){ return this.canvas; }
+  get currentTime(){ return this._t; }
+  set currentTime(v){ this._t = clamp(v, 0, this.duration); this.draw(); }
+  play(){ if (this._t >= this.duration) this._t = 0; this.paused = false; this._last = performance.now(); requestAnimationFrame(this._tick); return Promise.resolve(); }
+  pause(){ this.paused = true; }
+  _tick(now){
+    if (this.paused) return;
+    const dt = (now - this._last) / 1000; this._last = now;
+    this._t += dt * this.playbackRate;
+    if (this._t >= this.duration){ this._t = this.duration; this.paused = true; this.draw(); if (this.onended) this.onended(); return; }
+    this.draw(); requestAnimationFrame(this._tick);
+  }
+  draw(){ this.drawFn(this.ctx, this._t, this.canvas.width, this.canvas.height); }
+}
+class VideoPlayer {
+  constructor(url, duration){
+    const v = document.createElement('video');
+    v.src = url; v.playsInline = true; v.preload = 'auto'; v.muted = false; v.controls = false;
+    v.setAttribute('playsinline','');
+    this.v = v; this.duration = duration; this.onended = null;
+    v.addEventListener('ended', () => { if (this.onended) this.onended(); });
+    this._pendingSeek = null; this._seeking = false;
+    v.addEventListener('seeked', () => { this._seeking = false; if (this._pendingSeek !== null){ const t = this._pendingSeek; this._pendingSeek = null; this.currentTime = t; } });
+  }
+  get el(){ return this.v; }
+  get currentTime(){ return this._pendingSeek !== null ? this._pendingSeek : this.v.currentTime; }
+  set currentTime(t){
+    t = clamp(t, 0, this.duration);
+    if (this._seeking){ this._pendingSeek = t; return; }
+    this._seeking = true;
+    if (this.v.paused && typeof this.v.fastSeek === 'function') this.v.fastSeek(t); else this.v.currentTime = t;
+  }
+  get paused(){ return this.v.paused; }
+  get playbackRate(){ return this.v.playbackRate; }
+  set playbackRate(r){ this.v.playbackRate = r; }
+  play(){ return this.v.play().catch(() => {}); }
+  pause(){ this.v.pause(); }
+}
+
+// Grabación de ejemplo (sin video): escena simple con los eventos marcados.
+function demoEvents(){
+  return [
+    {t:3, label:'inicio nivel 1', icon:'🚩'}, {t:18, label:'acierto', icon:'⭐'}, {t:31, label:'error', icon:'❌'},
+    {t:44, label:'acierto', icon:'⭐'}, {t:60, label:'inicio nivel 2', icon:'🚩'}, {t:77, label:'error', icon:'❌'},
+    {t:89, label:'premio', icon:'🎁'}, {t:104, label:'acierto', icon:'⭐'}, {t:117, label:'fin', icon:'🏁'}
+  ];
+}
+function makeDemoPlayer(events){
+  return new VirtualPlayer(120, (ctx, t, w, h) => {
+    const lvl2 = t >= 60;
+    ctx.fillStyle = lvl2 ? '#24304f' : '#1d3b4f'; ctx.fillRect(0,0,w,h);
+    // tablero de cartas de memoria
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++){
+      const x = 180 + c*150, y = 90 + r*130, k = (r*4 + c);
+      const flip = Math.sin(t*1.3 + k) > 0.6;
+      ctx.fillStyle = flip ? '#ffb703' : '#3c5b7a';
+      ctx.fillRect(x, y, 110, 100);
+    }
+    const ev = events.find(e => t >= e.t && t < e.t + 2);
+    if (ev){ ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = '700 46px Nunito, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ev.icon + ' ' + ev.label, w/2, h - 40); }
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '600 24px Nunito, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Grabación de ejemplo · ' + fmt(t), 20, 34);
+  });
+}
+
+// Práctica: la velocidad de la pelota cambia y es conocida, así se puede medir qué tan bien traza el niño.
+const PRACTICE_DUR = 40;
+const SPEED_KEYS = [[0,.2],[7,.2],[12,.9],[19,.9],[24,.45],[30,.1],[35,.1],[40,.7]];
+function speedAt(t){
+  for (let i = 0; i < SPEED_KEYS.length - 1; i++){
+    const [t0,v0] = SPEED_KEYS[i], [t1,v1] = SPEED_KEYS[i+1];
+    if (t <= t1){ const f = (t - t0)/(t1 - t0); const s = (1 - Math.cos(Math.PI*f))/2; return v0 + (v1 - v0)*s; }
+  }
+  return SPEED_KEYS[SPEED_KEYS.length-1][1];
+}
+function ballPos(t){
+  let d = 0; const dt = 0.05;
+  for (let x = 0; x < t; x += dt) d += speedAt(x) * dt;
+  const span = 1, p = (d * 0.9) % (2*span);
+  return p <= span ? p : 2*span - p;
+}
+function makePracticePlayer(){
+  return new VirtualPlayer(PRACTICE_DUR, (ctx, t, w, h) => {
+    ctx.fillStyle = '#1b2a4a'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = '#2e4166'; ctx.fillRect(60, h/2 + 50, w - 120, 8);
+    const x = 100 + ballPos(t) * (w - 200);
+    ctx.fillStyle = '#ffb703'; ctx.beginPath(); ctx.arc(x, h/2, 46, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '600 24px Nunito, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Práctica · ' + fmt(t), 20, 34);
+  });
+}
+
+/* ======================= TRACE ======================= */
+function newTrace(item, duration){
+  const n = Math.max(2, Math.ceil(duration * HZ) + 1);
+  return { item, duration, n, vals: new Float32Array(n).fill(NaN), raw: [], strokes: 0, erases: 0, seeks: 0, plays: 0, runs: 0,
+           startedAt: null, endedAt: null, mode: S.cfg.mode };
+}
+function setRange(tr, t0, v0, t1, v1){
+  let i0 = Math.round(t0 * HZ), i1 = Math.round(t1 * HZ);
+  if (i0 > i1){ [i0,i1] = [i1,i0]; [v0,v1] = [v1,v0]; }
+  for (let i = i0; i <= i1; i++){
+    if (i < 0 || i >= tr.n) continue;
+    const f = i1 === i0 ? 1 : (i - i0)/(i1 - i0);
+    tr.vals[i] = clamp(v0 + (v1 - v0)*f, 0, 1);
+  }
+}
+const coverage = tr => { let c = 0; for (const v of tr.vals) if (!isNaN(v)) c++; return c / tr.n; };
+
+/* ======================= CHILD SCREEN ======================= */
+const graph = $('#graph'), scrub = $('#scrub');
+const gctx = graph.getContext('2d'), sctx = scrub.getContext('2d');
+let dpr = 1;
+function fitCanvas(c){
+  dpr = window.devicePixelRatio || 1;
+  const r = c.getBoundingClientRect();
+  const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+  if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+}
+const ro = new ResizeObserver(() => { fitCanvas(graph); fitCanvas(scrub); render(); });
+ro.observe(graph); ro.observe(scrub);
+
+function curEvents(){ return S.trace && S.trace.item.practice ? [] : S.events; }
+
+function render(){
+  if (!S.trace) return;
+  const tr = S.trace, W = graph.width, H = graph.height, pad = 14 * dpr;
+  const xOf = t => (t / tr.duration) * W, yOf = v => pad + (1 - v) * (H - 2*pad);
+  gctx.clearRect(0,0,W,H);
+  // grilla horizontal
+  gctx.strokeStyle = css('--line'); gctx.lineWidth = 1 * dpr; gctx.setLineDash([]);
+  for (let k = 0; k <= 4; k++){ const y = yOf(k/4); gctx.beginPath(); gctx.moveTo(0,y); gctx.lineTo(W,y); gctx.stroke(); }
+  // eventos como líneas verticales
+  gctx.setLineDash([6*dpr, 6*dpr]); gctx.strokeStyle = css('--muted'); gctx.globalAlpha = .45;
+  for (const e of curEvents()){ const x = xOf(e.t); gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x,H); gctx.stroke(); }
+  gctx.globalAlpha = 1; gctx.setLineDash([]);
+  // curva
+  gctx.strokeStyle = css('--trace'); gctx.lineWidth = 6 * dpr; gctx.lineJoin = 'round'; gctx.lineCap = 'round';
+  gctx.beginPath(); let open = false;
+  for (let i = 0; i < tr.n; i++){
+    const v = tr.vals[i];
+    if (isNaN(v)){ open = false; continue; }
+    const x = xOf(i / HZ), y = yOf(v);
+    if (!open){ gctx.moveTo(x, y); open = true; } else gctx.lineTo(x, y);
+  }
+  gctx.stroke();
+  // cabezal
+  const p = S.player ? S.player.currentTime : 0, px = xOf(p);
+  gctx.strokeStyle = css('--sea'); gctx.lineWidth = 3 * dpr; gctx.beginPath(); gctx.moveTo(px,0); gctx.lineTo(px,H); gctx.stroke();
+  // punta del lápiz: dónde está la línea ahora
+  if (sliderRunning || coverage(tr) === 0){
+    const py = yOf(sliderRunning ? sliderVal : 0.5);
+    gctx.fillStyle = css('--sun'); gctx.strokeStyle = css('--panel'); gctx.lineWidth = 4 * dpr;
+    gctx.beginPath(); gctx.arc(clamp(px, 16*dpr, W - 16*dpr), py, 16 * dpr, 0, Math.PI*2); gctx.fill(); gctx.stroke();
+  }
+  renderScrub();
+}
+function renderScrub(){
+  const tr = S.trace, W = scrub.width, H = scrub.height;
+  sctx.clearRect(0,0,W,H);
+  const barY = H * .72, barH = 8 * dpr;
+  sctx.fillStyle = css('--line'); roundRect(sctx, 0, barY - barH/2, W, barH, barH/2); sctx.fill();
+  const p = S.player ? S.player.currentTime : 0, px = (p / tr.duration) * W;
+  sctx.fillStyle = css('--sea'); roundRect(sctx, 0, barY - barH/2, Math.max(barH, px), barH, barH/2); sctx.fill();
+  sctx.font = (22 * dpr) + 'px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  for (const e of curEvents()){ sctx.fillText(e.icon, clamp((e.t / tr.duration) * W, 12*dpr, W - 12*dpr), H * .3); }
+  sctx.fillStyle = css('--sun'); sctx.strokeStyle = css('--panel'); sctx.lineWidth = 3 * dpr;
+  sctx.beginPath(); sctx.arc(clamp(px, 11*dpr, W - 11*dpr), barY, 11 * dpr, 0, Math.PI*2); sctx.fill(); sctx.stroke();
+}
+function roundRect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+// bucle de render mientras corre el video
+(function loop(){ if (S.trace && S.player && !S.player.paused) { sliderSample(); render(); } requestAnimationFrame(loop); })();
+
+function ptToTV(c, ev){
+  const r = c.getBoundingClientRect(), pad = 14;
+  const t = clamp((ev.clientX - r.left) / r.width, 0, 1) * S.trace.duration;
+  const v = clamp(1 - (ev.clientY - r.top - pad) / (r.height - 2*pad), 0, 1);
+  return {t, v};
+}
+
+// ----- trazado continuo: el video marca el tiempo, el dedo solo la altura -----
+let fingerDown = false;
+function graphValue(ev){
+  const r = graph.getBoundingClientRect(), pad = 14;
+  return clamp(1 - (ev.clientY - r.top - pad) / (r.height - 2*pad), 0, 1);
+}
+graph.addEventListener('pointerdown', ev => {
+  if (!S.trace || S.cfg.mode !== 'trazo' || !sliderRunning) return;
+  ev.preventDefault(); graph.setPointerCapture(ev.pointerId);
+  fingerDown = true; S.trace.strokes++;
+  setSlider(graphValue(ev));
+});
+graph.addEventListener('pointermove', ev => { if (fingerDown) setSlider(graphValue(ev)); });
+const liftFinger = () => { fingerDown = false; };   // al soltar, la línea sigue con el último valor
+graph.addEventListener('pointerup', liftFinger); graph.addEventListener('pointercancel', liftFinger);
+
+// ----- línea de tiempo -----
+let scrubbing = false;
+scrub.addEventListener('pointerdown', ev => {
+  if (!S.trace || sliderRunning) return;
+  ev.preventDefault(); scrub.setPointerCapture(ev.pointerId); scrubbing = true; S.trace.seeks++;
+  S.player.currentTime = ptToTV(scrub, ev).t; render();
+});
+scrub.addEventListener('pointermove', ev => { if (!scrubbing) return; S.player.currentTime = ptToTV(scrub, ev).t; render(); });
+scrub.addEventListener('pointerup', () => scrubbing = false); scrub.addEventListener('pointercancel', () => scrubbing = false);
+
+// ----- deslizador -----
+const vs = $('#vslider'), vthumb = $('#vthumb');
+let sliderVal = 0.5, sliderRunning = false, sliderLastT = 0, sliderLastV = 0.5, sliderDrag = false;
+function setSlider(v){ sliderVal = clamp(v, 0, 1); vthumb.style.top = ((1 - sliderVal) * 100) + '%'; }
+function sliderFromEv(ev){ const r = vs.getBoundingClientRect(); setSlider(1 - (ev.clientY - r.top) / r.height); }
+vs.addEventListener('pointerdown', ev => { if (!sliderRunning) return; ev.preventDefault(); vs.setPointerCapture(ev.pointerId); sliderDrag = true; S.trace.strokes++; sliderFromEv(ev); });
+vs.addEventListener('pointermove', ev => { if (sliderDrag) sliderFromEv(ev); });
+vs.addEventListener('pointerup', () => sliderDrag = false); vs.addEventListener('pointercancel', () => sliderDrag = false);
+function sliderSample(){
+  if (!sliderRunning) return;
+  const t = S.player.currentTime;
+  if (t < sliderLastT) { sliderLastT = t; }
+  setRange(S.trace, sliderLastT, sliderLastV, t, sliderVal);
+  if (sliderVal !== sliderLastV || S.trace.raw.length === 0)
+    S.trace.raw.push({stroke: S.trace.runs, t: +t.toFixed(3), v: +sliderVal.toFixed(4), ms: Math.round(performance.now() - S.sessionStart)});
+  sliderLastT = t; sliderLastV = sliderVal;
+}
+$('#rateRunBtn').onclick = () => {
+  const tr = S.trace; tr.runs++; tr.vals.fill(NaN); tr.raw = [];
+  S.player.pause(); S.player.currentTime = 0;
+  setSlider(0.5); fingerDown = false;
+  sliderLastT = 0; sliderLastV = sliderVal; sliderRunning = true;
+  S.player.playbackRate = S.cfg.rate;
+  setTimeout(() => S.player.play(), 120);
+  $('#rateRunBtn').disabled = true; $('#nextBtn').disabled = true; hideKeep();
+};
+
+// ----- controles -----
+function setPlayState(play){
+  if (!S.player) return;
+  if (play){ S.player.playbackRate = 1; S.player.play(); S.trace.plays++; } else S.player.pause();
+  updatePlayBtn();
+}
+function updatePlayBtn(){ $('#playBtn').textContent = S.player && !S.player.paused ? '❚❚ Pausar' : '▶ Ver video'; }
+$('#playBtn').onclick = () => setPlayState(S.player.paused);
+$('#clearBtn').onclick = () => { if (!S.trace) return; S.trace.vals.fill(NaN); S.trace.erases++; hideKeep(); render(); };
+function hideKeep(){ $('#childMsg').textContent = ''; $('#keepBtn').hidden = true; $('#nextBtn').textContent = 'Listo'; pendingConfirm = false; }
+let pendingConfirm = false;
+$('#keepBtn').onclick = hideKeep;
+$('#nextBtn').onclick = () => {
+  const cov = coverage(S.trace);
+  if (cov === 0){ $('#childMsg').textContent = 'Toca «Empezar» para dibujar tu línea.'; return; }
+  if (cov < 0.9 && !pendingConfirm){
+    $('#childMsg').textContent = 'Falta un pedazo de la línea.'; $('#keepBtn').hidden = false; $('#nextBtn').textContent = 'Seguir así'; pendingConfirm = true; return;
+  }
+  finishItem();
+};
+
+function onPlayerEnded(){
+  updatePlayBtn();
+  if (sliderRunning){
+    sliderSample(); sliderRunning = false;
+    $('#rateRunBtn').disabled = false; $('#rateRunBtn').textContent = '↺ Repetir'; $('#nextBtn').disabled = false;
+    render();
+  }
+}
+
+/* ======================= FLUJO ======================= */
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+
+$('#startBtn').onclick = () => {
+  const dims = readDims().filter(d => d.name && d.question);
+  const msg = $('#startMsg');
+  if (!dims.length){ msg.textContent = 'Agrega al menos una dimensión con nombre y pregunta.'; return; }
+  msg.textContent = '';
+  S.cfg = {
+    pid: $('#cfgPid').value.trim() || 'sin_codigo', cond: $('#cfgCond').value, mode: $('#cfgMode').value,
+    rate: parseFloat($('#cfgRate').value) || 1, shuffle: $('#cfgShuffle').checked,
+    practice: $('#cfgPractice').checked, step: Math.max(0.1, parseFloat($('#cfgStep').value) || 1), dims
+  };
+  store.set('tetVideoCfg', {dims, mode:S.cfg.mode, rate:S.cfg.rate, shuffle:S.cfg.shuffle, practice:S.cfg.practice, step:S.cfg.step});
+
+  if (S.videoURL){
+    S.mainPlayer = new VideoPlayer(S.videoURL, S.videoDuration);
+    S.events = buildEvents(S.videoDuration);
+    S.usingDemo = false;
+  } else {
+    S.events = demoEvents(); S.syncLSL = null; S.syncVideo = 0;
+    S.mainPlayer = makeDemoPlayer(S.events);
+    S.usingDemo = true;
+  }
+  S.mainPlayer.onended = onPlayerEnded;
+  const order = S.cfg.shuffle ? shuffle(dims.slice()) : dims.slice();
+  S.queue = (S.cfg.practice ? [PRACTICE] : []).concat(order);
+  S.idx = 0; S.results = []; S.practiceResult = null; S.sessionStart = performance.now(); S.startedISO = new Date().toISOString();
+
+  $('#setup').hidden = true; $('#child').hidden = false;
+  const slider = S.cfg.mode === 'deslizador';
+  $('#track').classList.toggle('slider', slider); vs.hidden = !slider;
+  $('#rateRunBtn').hidden = false; $('#playBtn').hidden = true; $('#clearBtn').hidden = true;
+  startItem();
+};
+
+function mountPlayer(p){
+  const stage = $('#stage'); stage.innerHTML = '';
+  stage.appendChild(p.el); S.player = p;
+}
+function startItem(){
+  const item = S.queue[S.idx];
+  if (item.practice){
+    if (!S.practicePlayer){ S.practicePlayer = makePracticePlayer(); S.practicePlayer.onended = onPlayerEnded; }
+    mountPlayer(S.practicePlayer);
+  } else mountPlayer(S.mainPlayer);
+  S.player.pause(); S.player.currentTime = 0;
+  S.trace = newTrace(item, S.player.duration);
+  const mainTotal = S.queue.filter(q => !q.practice).length, mainIdx = S.queue.slice(0, S.idx + 1).filter(q => !q.practice).length;
+  $('#qText').textContent = item.question;
+  $('#yHigh').textContent = item.high || 'Muchísimo'; $('#yLow').textContent = item.low || 'Nada';
+  const pill = $('#progress'); pill.classList.toggle('practice', !!item.practice);
+  pill.textContent = item.practice ? 'Práctica' : (mainIdx + ' de ' + mainTotal);
+  setSlider(0.5); sliderRunning = false;
+  $('#rateRunBtn').disabled = false; $('#rateRunBtn').textContent = '▶ Empezar'; $('#nextBtn').disabled = false;
+  hideKeep(); updatePlayBtn();
+  $('#introQ').textContent = item.question;
+  $('#introP').textContent = item.practice
+    ? 'Mira la pelota. Mientras se mueve, sube el dedo cuando vaya rápido y bájalo cuando vaya lento.'
+    : (S.cfg.mode === 'trazo'
+        ? 'Acuérdate de cómo te sentías mientras jugabas, no ahora viendo el video. La línea avanza sola con el video: pon tu dedo en el recuadro y súbelo o bájalo.'
+        : 'Acuérdate de cómo te sentías mientras jugabas. La línea avanza sola con el video: sube o baja el botón amarillo.');
+  $('#intro').hidden = false; $('#introGo').focus();
+  requestAnimationFrame(() => { fitCanvas(graph); fitCanvas(scrub); render(); });
+}
+$('#introGo').onclick = () => { $('#intro').hidden = true; S.trace.startedAt = performance.now(); };
+
+function finishItem(){
+  const tr = S.trace; tr.endedAt = performance.now();
+  S.player.pause();
+  if (tr.item.practice) S.practiceResult = tr; else S.results.push(tr);
+  S.idx++;
+  saveBackup(S.idx >= S.queue.length);
+  if (S.idx < S.queue.length) startItem(); else showDone();
+}
+
+/* ======================= RESULTADOS ======================= */
+function practiceR(tr){
+  const xs = [], ys = [];
+  for (let i = 0; i < tr.n; i++){ const v = tr.vals[i]; if (!isNaN(v)){ xs.push(v); ys.push(speedAt(i / HZ)); } }
+  if (xs.length < 10) return null;
+  const m = a => a.reduce((s,x) => s + x, 0) / a.length, mx = m(xs), my = m(ys);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < xs.length; i++){ const a = xs[i]-mx, b = ys[i]-my; sxy += a*b; sxx += a*a; syy += b*b; }
+  return (sxx && syy) ? sxy / Math.sqrt(sxx*syy) : null;
+}
+function showDone(){
+  $('#child').hidden = true; $('#done').hidden = false; S.player.pause();
+  const rows = S.results.map((tr, i) => [
+    i + 1, tr.item.name, (coverage(tr)*100).toFixed(0) + ' %',
+    fmt(((tr.endedAt || 0) - (tr.startedAt || tr.endedAt || 0)) / 1000),
+    tr.runs, tr.strokes, tr.seeks
+  ]);
+  const head = ['Orden','Dimensión','Cobertura','Tiempo','Pasadas','Toques','Saltos en el video'];
+  $('#sumTable').innerHTML = '<tr>' + head.map(h => '<th>' + h + '</th>').join('') + '</tr>' +
+    rows.map(r => '<tr>' + r.map(c => '<td>' + esc(String(c)) + '</td>').join('') + '</tr>').join('');
+  const pr = S.practiceResult ? practiceR(S.practiceResult) : null;
+  $('#practiceNote').textContent = S.practiceResult
+    ? (pr === null ? 'Práctica: trazo insuficiente para calcular la correlación.' : 'Práctica: correlación entre el trazo y la velocidad real de la pelota r = ' + pr.toFixed(2) + '. Úsala como indicador de si el niño entendió la tarea.')
+    : '';
+  const minis = $('#minis'); minis.innerHTML = '';
+  const all = (S.practiceResult ? [S.practiceResult] : []).concat(S.results);
+  all.forEach(tr => {
+    const fig = document.createElement('figure');
+    fig.innerHTML = '<figcaption></figcaption><canvas></canvas>';
+    fig.querySelector('figcaption').textContent = tr.item.name;
+    minis.appendChild(fig);
+    const c = fig.querySelector('canvas');
+    requestAnimationFrame(() => drawMini(c, tr));
+  });
+  if (S.usingDemo) $('#dlMsg').textContent = 'Sesión con la grabación de ejemplo: los datos sirven solo para probar la interfaz.';
+}
+function drawMini(c, tr){
+  fitCanvas(c); const x = c.getContext('2d'), W = c.width, H = c.height;
+  x.clearRect(0,0,W,H); x.strokeStyle = css('--line'); x.lineWidth = dpr; x.strokeRect(0,0,W,H);
+  if (tr.item.practice){
+    x.strokeStyle = css('--muted'); x.setLineDash([5*dpr,5*dpr]); x.lineWidth = 2*dpr; x.beginPath();
+    for (let i = 0; i <= 200; i++){ const t = i/200*tr.duration, y = H - speedAt(t)*H; i ? x.lineTo(i/200*W, y) : x.moveTo(0, y); }
+    x.stroke(); x.setLineDash([]);
+  }
+  x.strokeStyle = css('--trace'); x.lineWidth = 3*dpr; x.beginPath(); let open = false;
+  for (let i = 0; i < tr.n; i++){ const v = tr.vals[i]; if (isNaN(v)){ open = false; continue; } const px = (i/HZ)/tr.duration*W, py = H - v*H; open ? x.lineTo(px,py) : (x.moveTo(px,py), open = true); }
+  x.stroke();
+}
+function resample(tr, step){
+  const out = [];
+  for (let s = 0; s < tr.duration; s += step){
+    const i0 = Math.round(s * HZ), i1 = Math.min(tr.n - 1, Math.round((s + step) * HZ) - 1);
+    let sum = 0, k = 0;
+    for (let i = i0; i <= i1; i++){ const v = tr.vals[i]; if (!isNaN(v)){ sum += v; k++; } }
+    out.push({t: s, v: k ? sum / k : null});
+  }
+  return out;
+}
+function buildCSV(){
+  const step = S.cfg.step, lines = ['participante,condicion,modo,dimension,orden,tiempo_video_s,tiempo_lsl_s,valor'];
+  S.results.forEach((tr, oi) => {
+    for (const r of resample(tr, step)){
+      const lsl = S.syncLSL !== null ? (S.syncLSL + (r.t - S.syncVideo)).toFixed(3) : '';
+      lines.push([csvq(S.cfg.pid), S.cfg.cond, tr.mode, csvq(tr.item.name), oi + 1, r.t.toFixed(3), lsl, r.v === null ? '' : r.v.toFixed(4)].join(','));
+    }
+  });
+  return lines.join('\n');
+}
+const lslOf = t => S.syncLSL !== null ? (S.syncLSL + (t - S.syncVideo)).toFixed(3) : '';
+function build10Hz(){
+  const lines = ['participante,condicion,modo,dimension,orden,tiempo_video_s,tiempo_lsl_s,valor'];
+  const all = (S.practiceResult ? [S.practiceResult] : []).concat(S.results);
+  all.forEach(tr => {
+    const ord = tr.item.practice ? 0 : S.results.indexOf(tr) + 1;
+    for (let i = 0; i < tr.n; i++){
+      const t = i / HZ, v = tr.vals[i];
+      lines.push([csvq(S.cfg.pid), S.cfg.cond, tr.mode, csvq(tr.item.name), ord, t.toFixed(3), lslOf(t), isNaN(v) ? '' : v.toFixed(4)].join(','));
+    }
+  });
+  return lines.join('\n');
+}
+function buildRaw(){
+  const lines = ['participante,condicion,modo,dimension,orden,pasada,tiempo_video_s,tiempo_lsl_s,valor,ms_desde_inicio_sesion'];
+  const all = (S.practiceResult ? [S.practiceResult] : []).concat(S.results);
+  all.forEach(tr => {
+    const ord = tr.item.practice ? 0 : S.results.indexOf(tr) + 1;
+    for (const r of tr.raw)
+      lines.push([csvq(S.cfg.pid), S.cfg.cond, tr.mode, csvq(tr.item.name), ord, r.stroke, r.t.toFixed(3), lslOf(r.t), r.v.toFixed(4), r.ms].join(','));
+  });
+  return lines.join('\n');
+}
+function sessionId(){ return S.startedISO + '_' + S.cfg.pid; }
+function loadBackups(){ const b = store.get('tetVideoBackups'); return Array.isArray(b) ? b : []; }
+function saveBackup(complete){
+  const list = loadBackups().filter(b => b.id !== sessionId());
+  list.unshift({ id: sessionId(), pid: S.cfg.pid, cond: S.cfg.cond, iso: S.startedISO, base: baseName(), complete,
+    dims: S.results.length, demo: !!S.usingDemo,
+    files: { ventanas: buildCSV(), hz10: build10Hz(), toques: buildRaw(), json: buildJSON() } });
+  store.set('tetVideoBackups', list.slice(0, 20));
+}
+const FILES = [['ventanas','_ventanas.csv','CSV ventanas'],['hz10','_10hz.csv','CSV 10 Hz'],['toques','_toques.csv','CSV toques'],['json','.json','JSON']];
+function renderSaved(){
+  const list = loadBackups(), card = $('#savedCard');
+  card.hidden = list.length === 0; if (!list.length) return;
+  $('#savedTable').innerHTML = '<tr><th>Participante</th><th>Condición</th><th>Fecha</th><th>Estado</th><th>Archivos</th><th></th></tr>' +
+    list.map((b, i) => '<tr><td>' + esc(b.pid) + (b.demo ? ' (ejemplo)' : '') + '</td><td>' + esc(b.cond) + '</td><td>' + esc(new Date(b.iso).toLocaleString()) +
+      '</td><td>' + (b.complete ? 'Completa' : 'Incompleta (' + b.dims + ' dim.)') + '</td><td>' +
+      FILES.map(f => '<button class="btn ghost" type="button" data-i="' + i + '" data-f="' + f[0] + '">' + f[2] + '</button>').join(' ') +
+      '</td><td><button class="btn ghost" type="button" data-del="' + i + '">Borrar</button></td></tr>').join('');
+}
+$('#savedTable').addEventListener('click', ev => {
+  const btn = ev.target.closest('button'); if (!btn) return;
+  const list = loadBackups();
+  if (btn.dataset.del !== undefined){
+    const b = list[+btn.dataset.del];
+    if (!btn.dataset.sure){ btn.dataset.sure = '1'; btn.textContent = '¿Seguro?'; return; }
+    store.set('tetVideoBackups', list.filter(x => x.id !== b.id)); renderSaved(); return;
+  }
+  const b = list[+btn.dataset.i], f = FILES.find(x => x[0] === btn.dataset.f);
+  saveFile(b.base + f[1], b.files[f[0]], $('#savedMsg'));
+});
+renderSaved();
+
+function buildJSON(){
+  const pack = tr => ({
+    dimension: tr.item.name, pregunta: tr.item.question, practica: !!tr.item.practice, modo: tr.mode,
+    duracion_s: tr.duration, hz: HZ, valores_10hz: Array.from(tr.vals, v => isNaN(v) ? null : +v.toFixed(4)),
+    trazo_crudo: tr.raw, cobertura: +coverage(tr).toFixed(4), toques: tr.strokes, pasadas: tr.runs, saltos_video: tr.seeks,
+    tiempo_respuesta_s: tr.startedAt && tr.endedAt ? +((tr.endedAt - tr.startedAt)/1000).toFixed(2) : null
+  });
+  return JSON.stringify({
+    participante: S.cfg.pid, condicion: S.cfg.cond, inicio: S.startedISO, grabacion: S.usingDemo ? 'ejemplo' : (S.videoFile && S.videoFile.name),
+    sincronizacion: {video_s: S.syncVideo, lsl_s: S.syncLSL}, eventos: S.events,
+    configuracion: {modo: S.cfg.mode, velocidad_reproduccion: S.cfg.rate, valor_inicial: 0.5, orden_aleatorio: S.cfg.shuffle},
+    practica: S.practiceResult ? Object.assign(pack(S.practiceResult), {correlacion_con_velocidad: practiceR(S.practiceResult)}) : null,
+    dimensiones: S.results.map((tr, i) => Object.assign({orden: i + 1}, pack(tr)))
+  }, null, 1);
+}
+async function saveFile(filename, text, msgEl){
+  const msg = msgEl || $('#dlMsg');
+  try {
+    if (window.claude && typeof window.claude.use === 'function'){
+      const d = await window.claude.use('downloads');
+      if (d){ await d.save({filename, data: text}); msg.textContent = 'Archivo guardado: ' + filename; return; }
+    }
+  } catch(err){
+    if (err && err.code === 'declined'){ msg.textContent = 'Descarga cancelada.'; return; }
+    if (err && err.code === 'rate_limited'){ msg.textContent = 'Ya hay una descarga pendiente. Confírmala primero.'; return; }
+  }
+  const blob = new Blob([text], {type: filename.endsWith('.csv') ? 'text/csv' : 'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  msg.textContent = 'Archivo generado: ' + filename;
+}
+const baseName = () => 'TET_' + S.cfg.pid.replace(/[^\w-]+/g,'_') + '_' + S.cfg.cond + '_' + S.startedISO.slice(0,16).replace(/[:T]/g,'-');
+$('#dlCsv').onclick = () => saveFile(baseName() + '_ventanas.csv', buildCSV());
+$('#dlHz').onclick = () => saveFile(baseName() + '_10hz.csv', build10Hz());
+$('#dlRaw').onclick = () => saveFile(baseName() + '_toques.csv', buildRaw());
+$('#dlJson').onclick = () => saveFile(baseName() + '.json', buildJSON());
+$('#newSession').onclick = () => {
+  if (S.player) S.player.pause();
+  S.trace = null; S.player = null; S.mainPlayer = null;
+  $('#done').hidden = true; $('#setup').hidden = false; renderSaved(); $('#dlMsg').textContent = ''; $('#cfgPid').value = ''; $('#cfgPid').focus();
+};
+
+/* ======================= UTIL ======================= */
+function fmt(s){ s = Math.max(0, s || 0); const m = Math.floor(s/60), r = Math.floor(s%60); return m + ':' + String(r).padStart(2,'0'); }
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function csvq(s){ s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+/* ==========================================================================
+   Fuentes locales (public/fonts). Nunca se cargan desde Google Fonts.
+   ========================================================================== */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/nunito-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/nunito-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/nunito-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/baloo-2-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/baloo-2-latin-700-normal.woff2') format('woff2');
+}
+
+/* ==========================================================================
+   Tokens. El tema claro va en :root; el oscuro solo redefine colores.
+   data-theme="light" | "dark" en <html> fuerza un tema (útil para revisar).
+   ========================================================================== */
+:root {
+  /* Color */
+  --bg: #eaf2f8;
+  --panel: #ffffff;
+  --ink: #1b2a4a;
+  --muted: #52607a;
+  --line: #c9d6e3;
+  --sun: #ffb703;        /* acento amarillo: punto, pulgar, botón principal */
+  --sun-ink: #3b2a00;
+  --sea: #1d6f93;        /* acción secundaria, foco */
+  --sea-ink: #ffffff;
+  --trace: #c92a62;      /* curva registrada */
+  --ok: #2b7a3b;
+  --warn: #9a5b00;
+  --danger: #b3261e;
+  --scrim: rgba(10, 20, 40, 0.55);
+  --video-bg: #000000;
+
+  /* Tipografía */
+  --font-text: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 'Baloo 2', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Medidas */
+  --radius-s: 8px;
+  --radius-m: 14px;
+  --radius-l: 22px;
+  --radius-pill: 999px;
+  --touch-min: 56px;      /* alto mínimo de botones en la pantalla del niño */
+  --thumb-size: 76px;     /* pulgar del deslizador */
+  --dot-radius: 16px;     /* punto amarillo en la gráfica */
+  --trace-width: 6px;     /* grosor de la curva */
+
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1a2e;
+    --panel: #172540;
+    --ink: #e8eef7;
+    --muted: #a9b6ca;
+    --line: #2e4166;
+    --sun: #ffc43d;
+    --sun-ink: #2a1e00;
+    --sea: #5bb8da;
+    --sea-ink: #06202c;
+    --trace: #ff7aa5;
+    --ok: #6fcf86;
+    --warn: #ffb35c;
+    --danger: #ff8a80;
+    --scrim: rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f1a2e;
+  --panel: #172540;
+  --ink: #e8eef7;
+  --muted: #a9b6ca;
+  --line: #2e4166;
+  --sun: #ffc43d;
+  --sun-ink: #2a1e00;
+  --sea: #5bb8da;
+  --sea-ink: #06202c;
+  --trace: #ff7aa5;
+  --ok: #6fcf86;
+  --warn: #ffb35c;
+  --danger: #ff8a80;
+  --scrim: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+#app {
+  min-height: 100%;
+}
+h1,
+h2,
+h3,
+.big {
+  font-family: var(--font-title);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid var(--sea);
+  outline-offset: 2px;
+}
+[hidden] {
+  display: none !important;
+}
+.muted {
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   Componentes comunes
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--line);
+  background: var(--panel);
+  font-weight: 800;
+}
+.btn.primary {
+  background: var(--sun);
+  color: var(--sun-ink);
+  border-color: var(--sun);
+}
+.btn.sea {
+  background: var(--sea);
+  color: var(--sea-ink);
+  border-color: var(--sea);
+}
+.btn.ghost {
+  background: transparent;
+}
+.btn.danger {
+  color: var(--danger);
+  border-color: currentColor;
+  background: transparent;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Botones del niño: grandes, mínimo 56 px de alto. */
+.btn.kid {
+  min-height: var(--touch-min);
+  font-size: 1.2rem;
+  padding: 12px 28px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card h2 {
+  font-size: 1.35rem;
+  margin-bottom: 12px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.status {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.status.ok {
+  color: var(--ok);
+}
+.status.warn {
+  color: var(--warn);
+}
+.status.error {
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   Pantalla del investigador (sobria y densa)
+   ========================================================================== */
+.researcher {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+.researcher h1 {
+  font-size: 2.1rem;
+  margin-bottom: 4px;
+}
+.researcher .lead {
+  color: var(--muted);
+  max-width: 68ch;
+  margin: 0 0 24px;
+}
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+.swatch {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+.swatch span {
+  display: block;
+  height: 44px;
+}
+.swatch code {
+  display: block;
+  padding: 6px 8px;
+}
+
+/* ==========================================================================
+   Pantalla del niño: sin desplazamiento ni zoom.
+   ========================================================================== */
+.kid-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
