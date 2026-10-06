@@ -1,5 +1,6 @@
 // Estado de la sesión y configuración por defecto (SPEC §6).
 import type { Sync, VideoEvent } from './data/events';
+import type { Player } from './players/player';
 
 export type Condicion = 'RM' | 'Tablet';
 export type ModoRespuesta = 'trazo' | 'deslizador';
@@ -67,6 +68,38 @@ export interface SessionData {
   practica: DimensionRecord | null;
   /** En el orden en que el niño las respondió. */
   dimensiones: DimensionRecord[];
+}
+
+/**
+ * Lo que la pantalla de configuración entrega a la de trazado al pulsar «Comenzar sesión».
+ * El reproductor pasa a ser responsabilidad de quien recibe el plan (debe llamar a destroy()).
+ */
+export interface SessionPlan {
+  /** Configuración validada: solo dimensiones completas, textos sin espacios sobrantes. */
+  config: Config;
+  /** Video de la partida, o la grabación de ejemplo si no se cargó video. */
+  player: Player;
+  /** Nombre del archivo de video; null con la grabación de ejemplo. */
+  grabacion: string | null;
+  sincronizacion: Sync;
+  /** Eventos en tiempo de video, ya dentro de [0, duración]. */
+  eventos: VideoEvent[];
+  /** Dimensiones en el orden en que se responderán (sin la práctica). */
+  orden: Dimension[];
+}
+
+let currentPlan: SessionPlan | null = null;
+
+/** Entrega el plan a la siguiente pantalla. */
+export function setPlan(plan: SessionPlan | null): void {
+  currentPlan = plan;
+}
+
+/** Recoge el plan y lo borra del estado global, para que solo una pantalla sea su dueña. */
+export function takePlan(): SessionPlan | null {
+  const p = currentPlan;
+  currentPlan = null;
+  return p;
 }
 
 export const APP_VERSION: string = __APP_VERSION__;
