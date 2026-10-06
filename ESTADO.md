@@ -11,75 +11,61 @@
 | 3. Reproductores (`VideoPlayer`, `VirtualPlayer`) | Revisada en navegador | `7ed4cdd` y `fa1ad7a` Video players working, phase 3 builded |
 | 4. Pantalla de configuración | Revisada | `68cae27` Phase 4 builded, configuration is ready |
 | 5. Pantalla de trazado | Revisada | `260975d` Phase 5 builded, raw dimensions adquired |
-| 6. Pantalla final y exportaciones | Revisada | traces ready, download buttons ready, no multiple downloads enabled |
-| 7. IndexedDB y sesiones guardadas | **En curso** | — |
+| 6. Pantalla final y exportaciones | Revisada | `409ace7` traces ready, download buttons ready, no multiple downloads enabled |
+| 7. IndexedDB y sesiones guardadas | Revisada, con un fallo pendiente (ZIP) | Phase 7 ready, persistent saving and config table |
 | 8. Pulido para tablet | Sin empezar | — |
 
-Pruebas: 169 de 169 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
+Pruebas: 177 de 177 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
 
-Las decisiones aceptadas de las fases 2, 4 y 5 están en CLAUDE.md.
+Las decisiones aceptadas de las fases 2, 4, 5 y 6 están en CLAUDE.md.
+
+Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`).
 
 ## Dónde quedamos
 
-**Fase 6 revisada (2026-10-05); se empieza la fase 7.** El investigador no vio la frase de la correlación porque esa sesión no tuvo práctica; desde entonces, la pantalla final lo dice explícitamente. Se recorrió completa en Brave sin interfaz: práctica y una dimensión de 2 minutos sobre la grabación de ejemplo, panel del investigador y descarga de los 4 archivos. Revisión de los archivos descargados: los 3 CSV llevan BOM y el JSON no. `_10hz.csv` tiene 1201 filas de la dimensión y 401 de la práctica, `_ventanas.csv` 120 filas, y Python lee el JSON sin errores.
+**Fase 7 revisada (2026-10-05).** El investigador confirmó que las sesiones se guardan, que la tabla se ve bien y que la frase de la correlación aparece.
 
-Qué revisar en la fase 6:
+**Fallo pendiente:** en la prueba del investigador, el botón «Exportar todas las sesiones (ZIP)» no descargó el archivo. En Brave sin interfaz sí lo descargó. Falta saber en qué dispositivo y navegador ocurrió, y qué pasó exactamente (nada, un aviso, una descarga bloqueada).
 
-1. «¡Terminaste! Gracias por jugar.» en grande. La sección «Para el investigador» está **plegada** para que el niño no la vea.
-2. Al desplegarla: aviso si se usó la grabación de ejemplo; datos de la sesión; tabla por dimensión (orden, nombre, cobertura, tiempo de respuesta, pasadas, toques, saltos); correlación de la práctica con su frase; miniaturas de cada curva, con la velocidad real punteada en la práctica.
-3. Botones de descarga de los 4 archivos y, si el navegador lo permite (Android), «Compartir los 4 archivos».
-4. «Nueva sesión» sin haber descargado nada pide un segundo toque.
-5. Abrir los CSV en Excel: las tildes se ven bien.
+Pruebas previas: se comprobó en Brave sin interfaz el criterio de aceptación del SPEC §14: en una sesión de 3 dimensiones se respondieron 2 y se recargó la pestaña. La sesión apareció en la tabla como «Incompleta (2 de 3 dimensiones)», y su `_10hz.csv` trae 1201 filas de cada una de las 2 dimensiones. También se probaron el ZIP (una carpeta con los 4 archivos) y «Borrar» con dos toques. La consola no mostró errores.
 
-## Decisiones de la fase 6 (aceptadas; resumidas en CLAUDE.md)
+Qué revisar:
 
-- **Umbrales de la frase de la práctica** (orientativos, en `src/summary.ts`): r ≥ 0,5 «sigue bien la velocidad»; 0,2 ≤ r < 0,5 «solo en parte, conviene revisar»; r < 0,2 «es posible que no haya entendido la tarea».
-- La sección del investigador empieza plegada.
-- «Compartir» envía los 4 archivos juntos. No hay un botón «Descargar todos»: Chrome suele bloquear o pedir permiso para varias descargas seguidas. El ZIP de todas las sesiones es de la fase 7.
-- Hasta la fase 7 la sesión no queda guardada en el dispositivo: por eso «Nueva sesión» pide confirmación si no se descargó ni compartió nada.
+1. Hacer una sesión y, a mitad, recargar o cerrar la pestaña. Al volver, la tabla «Sesiones guardadas en este dispositivo» la muestra como incompleta, con sus dimensiones descargables.
+2. Terminar una sesión: la pantalla final dice «Sesión guardada en este dispositivo», y «Nueva sesión» ya no pide confirmación.
+3. En la tabla: participante (con «(ejemplo)» si se usó la grabación de ejemplo), condición, fecha, estado, los 4 botones de descarga, «Compartir» si el navegador lo permite y «Borrar», que pide un segundo toque.
+4. «Exportar todas las sesiones (ZIP)»: una carpeta por sesión con sus 4 archivos.
+5. El aviso sobre el almacenamiento persistente. En el navegador sin interfaz se negó; en Android, con la app instalada, Chrome suele concederlo.
 
-## Revisión de la fase 5 (hecha)
+## Decisiones de la fase 7 (para que el investigador las confirme)
 
-Lo que se revisó:
-
-1. Tarjeta de introducción con la pregunta, la instrucción y «¡Vamos!».
-2. En espera: video en el primer cuadro, punto amarillo en (0, 0,5), línea de tiempo con íconos que mueve el video al tocarla o arrastrarla.
-3. «▶ Empezar»: el video corre desde 0 hasta el final sin pausas; la línea de tiempo queda bloqueada; el niño solo sube o baja (en la gráfica o con el deslizador, según el modo); al soltar, el valor se mantiene.
-4. Al terminar: «↺ Repetir» y «Listo». «Listo» sin línea muestra «Toca «Empezar» para dibujar tu línea»; con menos del 90 % muestra «Falta un pedazo de la línea» con «Seguir dibujando» y «Seguir así».
-5. Pasar la app a segundo plano durante la grabación: al volver, la pasada está borrada y pide repetirla.
-6. Girar la tablet o cambiar el tamaño de la ventana: se redibuja sin perder la línea.
-7. Al final, la pantalla «¡Terminaste!» provisional muestra, por dimensión, la cobertura, el tiempo, las pasadas, los toques, los saltos y la correlación de la práctica.
-
-## Decisiones de la fase 5 (aceptadas sin objeción; resumidas en CLAUDE.md)
-
-- **«Repetir» borra los toques de la pasada anterior** (SPEC §7.6, paso 1): el trazo crudo y el contador `toques` corresponden solo a la última pasada, igual que la línea. `pasadas` cuenta todas las pasadas empezadas, incluidas las interrumpidas, y `saltos_video` cuenta todos los gestos en la línea de tiempo de la dimensión.
-- **Tiempo de respuesta:** desde «¡Vamos!» hasta «Listo».
-- **La práctica usa la velocidad configurada**, igual que las dimensiones (como en el prototipo).
-- **Fin de la pasada:** la última muestra se toma en la duración del video aunque `currentTime` se detenga unas centésimas antes. Así la cobertura llega a 1,0.
-- La línea de tiempo también se puede usar después de terminar una pasada (no solo antes de la primera); cada gesto cuenta como salto.
-- Si el navegador impide reproducir, la pasada se anula y se pide tocar «Empezar» otra vez.
-- La gráfica y la línea de tiempo dejan 20 px a cada lado, para que el punto y la perilla quepan enteros en los extremos.
-- Pantalla completa, orientación y wake lock quedan para la fase 8. No hay forma de salir a mitad de la sesión salvo recargar; el respaldo en IndexedDB es de la fase 7.
+- **Qué se guarda y cuándo:** la sesión entera se guarda (upsert por `id = inicio_participante`) al terminar la práctica y al terminar cada dimensión. Si se interrumpe tras la práctica, aparece como «Incompleta (0 de N)», con la práctica en el CSV a 10 Hz y en el de toques.
+- **Una sesión es completa** cuando tiene todas las dimensiones planeadas. Se guarda también cuántas había planeadas, para mostrar «2 de 4».
+- **Si falla el guardado** (p. ej., modo privado), el niño no se entera. La pantalla final lo avisa en rojo, abre la sección del investigador y «Nueva sesión» vuelve a pedir confirmación.
+- **Nombres repetidos en el ZIP:** si dos sesiones dan el mismo nombre base (mismo participante en el mismo minuto), la carpeta de la segunda lleva «_2».
+- Los archivos de la tabla se generan al tocar el botón, no al abrir la pantalla.
+- No se agregó ninguna dependencia: `idb` y `fflate` ya estaban. La parte pura del almacenamiento tiene pruebas. Las llamadas a IndexedDB se probaron en el navegador, no con Vitest: probarlas ahí exigiría `fake-indexeddb`.
 
 ## Mapa del código ya escrito
 
 - `src/trace/trace.ts`: clase `Trace` (buffer a 10 Hz con `setRange`, `beginPass`/`sample` para grabar, cobertura) y `resample` (promedio por ventanas).
 - `src/trace/recorder.ts`: `DimensionRecorder`, el estado de una dimensión en la pantalla de trazado (espera, grabando, terminada; valor, trazo crudo, toques, pasadas, saltos, interrupción, comprobación de «Listo» y `toRecord`). Sin DOM, con pruebas.
-- `src/trace/render.ts`: geometría compartida por la gráfica, la línea de tiempo y el deslizador (con pruebas) y su dibujo en canvas (`drawGraph`, `drawTimeline`, `fitCanvas`, `readPalette`).
+- `src/trace/render.ts`: geometría compartida por la gráfica, la línea de tiempo y el deslizador (con pruebas) y su dibujo en canvas (`drawGraph`, `drawTimeline`, `drawMini`, `fitCanvas`, `readPalette`).
 - `src/data/events.ts`: lectura del CSV de eventos, `iconFor`, sincronización (`eventToVideo`, `videoToLsl`, `toVideoEvents`).
 - `src/data/export.ts`: los 4 archivos de salida (`buildAllFiles`), `fileBase`, `isoLocal`.
+- `src/data/download.ts`: `downloadFile`, `downloadBlob`, `canShareFiles`, `shareFiles`.
+- `src/data/storage.ts`: IndexedDB con `idb` (`putSession`, `getSession`, `listSessions`, `deleteSession`), `requestPersistence`, y la parte pura con pruebas (`sessionId`, `toStored`, `sortSessions`, `estadoTexto`, `buildZip`, `zipName`).
 - `src/practice.ts`: perfil de velocidad, posición de la pelota, `practiceCorrelation`.
-- `src/config.ts`: recordar la configuración (`loadSavedConfig`, `saveConfig`, `sanitizeConfig`), `validateConfig` y el orden de dimensiones (`dimensionOrder`, `shuffled`). Sin DOM, con pruebas.
-- `src/state.ts`: tipos `Config`, `SessionData`, `DimensionRecord`, `RawPoint`, la configuración por defecto, `SessionPlan` (`setPlan`/`takePlan`: de la configuración al trazado) y `setFinished`/`takeFinished` (del trazado a la pantalla final).
+- `src/summary.ts`: filas de la tabla final y la frase de la correlación de la práctica.
+- `src/config.ts`: recordar la configuración, `validateConfig` y el orden de dimensiones. Sin DOM, con pruebas.
+- `src/state.ts`: tipos, configuración por defecto, `SessionPlan` (`setPlan`/`takePlan`: de la configuración al trazado) y `FinishedSession` (`setFinished`/`takeFinished`: del trazado a la pantalla final, con la promesa del último guardado).
 - `src/players/`: la interfaz `Player`, `VideoPlayer` (con `loadVideo` y `resolveDuration`), `VirtualPlayer` y `scenes.ts` (práctica, grabación de ejemplo, `DEMO_EVENTS`).
-- `src/trace/render.ts` incluye también `drawMini`, las miniaturas de la pantalla final.
-- `src/summary.ts`: filas de la tabla final (`summaryRows`) y la frase de la correlación de la práctica (`interpretCorrelation`). Sin DOM, con pruebas.
-- `src/data/download.ts`: `downloadFile` (Blob y enlace `download`), `canShareFiles` y `shareFiles` (navigator.share).
-- `src/screens/setup.ts`: formulario de configuración. `tracing.ts`: pantalla del niño. `done.ts`: pantalla final con el resumen y las descargas; recibe la sesión con `takeFinished()`.
+- `src/screens/`: `setup.ts` (formulario), `savedSessions.ts` (tabla de sesiones guardadas, montada dentro de `setup.ts`), `tracing.ts` (pantalla del niño; guarda tras cada dimensión) y `done.ts` (pantalla final).
 - `tests/`: pruebas de cada módulo.
 
-## Para la fase 7
+## Para la fase 8
 
-- En `finishItem()` de `tracing.ts` está marcado el punto donde se guarda la sesión en IndexedDB al terminar cada dimensión.
-- La tabla de sesiones guardadas puede reutilizar `buildAllFiles`, `downloadFile` y `shareFiles`.
-- Cuando las sesiones se guarden solas, quitar la confirmación de «Nueva sesión» en `done.ts` (o dejarla solo si falló el guardado).
+- Pantalla completa y orientación horizontal al iniciar la sesión (desde el gesto de «Comenzar sesión»), y Screen Wake Lock durante la sesión, pidiéndolo de nuevo al volver de segundo plano (SPEC §7.9).
+- Prueba en la tablet Android real, instalada como app: sin conexión, tacto, rotación, video MP4 y WebM de MediaRecorder, video muy corto (< 5 s) y muy largo (> 30 min).
+- Revisión de accesibilidad y de `prefers-reduced-motion`.
+- Pendiente de decidir: alguna forma, solo para el investigador, de salir a mitad de la sesión.

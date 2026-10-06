@@ -102,14 +102,20 @@ export function takePlan(): SessionPlan | null {
   return p;
 }
 
-let finishedSession: SessionData | null = null;
+export interface FinishedSession {
+  session: SessionData;
+  /** Resultado del último guardado en IndexedDB: true si quedó guardada en el dispositivo. */
+  guardado: Promise<boolean>;
+}
+
+let finishedSession: FinishedSession | null = null;
 
 /** Entrega la sesión terminada a la pantalla final. */
-export function setFinished(s: SessionData | null): void {
+export function setFinished(s: FinishedSession | null): void {
   finishedSession = s;
 }
 
-export function takeFinished(): SessionData | null {
+export function takeFinished(): FinishedSession | null {
   const s = finishedSession;
   finishedSession = null;
   return s;

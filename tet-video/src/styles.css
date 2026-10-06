@@ -424,6 +424,33 @@ button {
   -webkit-user-select: none;
 }
 
+/* Sesiones guardadas (SPEC §9) */
+.sessions {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92rem;
+}
+.sessions th,
+.sessions td {
+  text-align: left;
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.sessions th {
+  color: var(--muted);
+  font-weight: 700;
+}
+.file-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.btn.small.danger {
+  color: var(--danger);
+}
+
 /* Pantalla final (SPEC §11) */
 .done .thanks {
   text-align: center;

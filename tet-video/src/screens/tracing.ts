@@ -7,6 +7,7 @@ import type { Player } from '../players/player';
 import { createPracticePlayer } from '../players/scenes';
 import { PRACTICE_DIMENSION } from '../practice';
 import { setFinished, takePlan, type Dimension, type DimensionRecord, type SessionData } from '../state';
+import { putSession, toStored } from '../data/storage';
 import { DimensionRecorder, VALOR_INICIAL } from '../trace/recorder';
 import {
   drawGraph,
@@ -431,13 +432,31 @@ export const mountTracing: MountScreen = (root, go) => {
     const r = rec.toRecord(item.dimension, config.modo, tiempo);
     if (item.practica) practicaRec = r;
     else dimensiones.push(r);
-    // Fase 7: aquí se guardará la sesión en IndexedDB al terminar cada dimensión.
+    save();
     if (idx + 1 < items.length) startItem(idx + 1);
     else endSession();
   }
 
-  function endSession() {
-    const s: SessionData = {
+  /**
+   * Respaldo en IndexedDB tras cada dimensión (SPEC §9). Los guardados se encadenan para que
+   * terminen en orden; un fallo no interrumpe al niño, pero la pantalla final lo avisa.
+   */
+  let saveChain: Promise<boolean> = Promise.resolve(true);
+  function save() {
+    const stored = toStored(buildSession(), plan!.orden.length);
+    saveChain = saveChain.then(() =>
+      putSession(stored).then(
+        () => true,
+        (err: unknown) => {
+          console.error('No se pudo guardar la sesión en IndexedDB', err);
+          return false;
+        },
+      ),
+    );
+  }
+
+  function buildSession(): SessionData {
+    return {
       participante: config.participante,
       condicion: config.condicion,
       inicio,
@@ -449,9 +468,13 @@ export const mountTracing: MountScreen = (root, go) => {
       ordenAleatorio: config.ordenAleatorio,
       resolucionS: config.resolucionS,
       practica: practicaRec,
-      dimensiones,
+      // Copia: cada guardado lleva las dimensiones terminadas hasta ese momento.
+      dimensiones: [...dimensiones],
     };
-    setFinished(s);
+  }
+
+  function endSession() {
+    setFinished({ session: buildSession(), guardado: saveChain });
     go('done');
   }
 

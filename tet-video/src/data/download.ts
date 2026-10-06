@@ -6,12 +6,17 @@ function toBlob(f: OutputFile): Blob {
   return new Blob([f.content], { type: f.mime });
 }
 
-/** Descarga un archivo con un enlace temporal. */
+/** Descarga uno de los archivos de salida. */
 export function downloadFile(f: OutputFile): void {
-  const url = URL.createObjectURL(toBlob(f));
+  downloadBlob(toBlob(f), f.name);
+}
+
+/** Descarga un Blob con un enlace temporal. */
+export function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = f.name;
+  a.download = name;
   a.rel = 'noopener';
   document.body.append(a);
   a.click();

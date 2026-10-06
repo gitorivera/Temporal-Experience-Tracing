@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { mountSetup } from './screens/setup';
 import { mountTracing } from './screens/tracing';
 import { mountDone } from './screens/done';
+import { requestPersistence } from './data/storage';
 
 export type ScreenName = 'setup' | 'tracing' | 'done';
 
@@ -32,5 +33,8 @@ function go(to: ScreenName): void {
 if ('serviceWorker' in navigator) {
   registerSW({ immediate: true });
 }
+
+// Almacenamiento persistente: reduce el riesgo de que el navegador borre las sesiones (SPEC §9).
+void requestPersistence();
 
 go('setup');

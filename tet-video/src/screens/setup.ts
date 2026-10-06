@@ -5,6 +5,7 @@ import { parseEvents, parseNumber, toVideoEvents, type ParseResult, type Sync } 
 import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
 import { APP_VERSION, configPorDefecto, setPlan, type Config, type Dimension } from '../state';
+import { mountSavedSessions } from './savedSessions';
 
 type ParsedOk = Extract<ParseResult, { ok: true }>;
 
@@ -146,10 +147,7 @@ export const mountSetup: MountScreen = (root, go) => {
       </div>
     </form>
 
-    <div class="card" id="sesiones">
-      <h2>Sesiones guardadas</h2>
-      <p class="muted">La tabla de sesiones guardadas en este dispositivo se agrega en la fase 7.</p>
-    </div>
+    <div class="card" id="sesiones"></div>
   `;
   root.append(el);
 
@@ -536,8 +534,10 @@ export const mountSetup: MountScreen = (root, go) => {
   renderDims();
   renderVideoStatus();
   renderEventsStatus();
+  const unmountSessions = mountSavedSessions($('sesiones'));
 
   return () => {
+    unmountSessions();
     disarmRestore();
     videoToken++;
     if (!handedOff) dropVideo();

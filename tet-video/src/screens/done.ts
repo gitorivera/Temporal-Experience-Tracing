@@ -40,13 +40,15 @@ function metaLines(s: SessionData): [string, string][] {
 }
 
 export const mountDone: MountScreen = (root, go) => {
-  const s = takeFinished();
+  const finished = takeFinished();
+  const s = finished?.session ?? null;
   const el = document.createElement('section');
   el.className = 'researcher done';
   el.innerHTML = `
     <div class="thanks"><p class="big">¡Terminaste! Gracias por jugar.</p></div>
     <details class="card done-panel" id="panel" hidden>
       <summary>Para el investigador</summary>
+      <p class="status" id="guardado" aria-live="polite">Guardando la sesión en este dispositivo…</p>
       <p class="notice warn" id="aviso-ejemplo" hidden>
         Esta sesión usó la grabación de ejemplo: los datos sirven solo para probar la aplicación.
       </p>
@@ -80,8 +82,12 @@ export const mountDone: MountScreen = (root, go) => {
 
   const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>(`#${id}`)!;
   const btnNueva = $<HTMLButtonElement>('nueva');
-  /** Se descargó o compartió algo; si no, «Nueva sesión» pide confirmación. */
-  let saved = false;
+  /**
+   * La sesión está a salvo: quedó en IndexedDB o se descargó o compartió algo.
+   * Si no, «Nueva sesión» pide confirmación. Mientras se espera el guardado, se considera a salvo
+   * (el guardado tarda milisegundos y casi nunca falla).
+   */
+  let saved = true;
   let armed: ReturnType<typeof setTimeout> | null = null;
   const disarm = () => {
     if (armed !== null) clearTimeout(armed);
@@ -92,8 +98,7 @@ export const mountDone: MountScreen = (root, go) => {
 
   btnNueva.addEventListener('click', () => {
     if (s && !saved && armed === null) {
-      // Hasta la fase 7 la sesión no queda guardada en el dispositivo.
-      btnNueva.textContent = 'Aún no descargaste los archivos. Toca otra vez para salir';
+      btnNueva.textContent = 'La sesión no quedó guardada y no descargaste los archivos. Toca otra vez para salir';
       btnNueva.classList.add('danger');
       armed = setTimeout(disarm, 5000);
       return;
@@ -106,6 +111,21 @@ export const mountDone: MountScreen = (root, go) => {
 
   const panel = $<HTMLDetailsElement>('panel');
   panel.hidden = false;
+
+  const guardado = $('guardado');
+  let alive = true;
+  void finished!.guardado.then((ok) => {
+    if (!alive) return;
+    if (ok) {
+      guardado.textContent = 'Sesión guardada en este dispositivo. También aparece en la tabla de sesiones guardadas.';
+      guardado.className = 'status ok';
+    } else {
+      saved = false;
+      guardado.textContent = 'No se pudo guardar la sesión en este dispositivo. Descarga los archivos antes de salir.';
+      guardado.className = 'status error';
+      panel.open = true;
+    }
+  });
   $('aviso-ejemplo').hidden = s.grabacion !== null;
 
   // Metadatos
@@ -209,6 +229,7 @@ export const mountDone: MountScreen = (root, go) => {
   }
 
   return () => {
+    alive = false;
     disarm();
     ro.disconnect();
     mql.removeEventListener('change', drawMinis);
