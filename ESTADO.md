@@ -25,10 +25,22 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 **Primera versión terminada (2026-10-06), commit «First version finished, need for LSL timing».** Las 8 fases están construidas y la app está publicada en https://gitorivera.github.io/tet-app/.
 
+### Sincronización con varios destellos (v2): especificación aprobada
+
+Contexto dado por el investigador (2026-10-06):
+- El EEG y los eventos del juego van por LSL a un computador que los registra. Después de cada partida, el niño traza en TET mientras ve el video de su partida. Luego se buscan en el EEG patrones que correspondan a las trazas.
+- El video de la Quest se graba con el celular, con la app Meta Horizon (transmisión). La versión de tablet del juego aún no existe.
+- La partida típica dura unos 5 minutos. El juego puede mostrar un destello y enviar el marcador LSL en el mismo cuadro, y el jugador pulsa un botón «Iniciar partida» que puede disparar el primer destello.
+
+Documentos escritos (commit «Specifications for game and tet app syncroniztion created»):
+- **`GAME-SPECS.md`** (nuevo, pedido por el investigador): cambios recomendados en el juego. Destellos `sync_1` al pulsar «Iniciar partida», uno cada 60 s y uno al final; 300 ms; cuadrado blanco con marco negro, fijo a la cabeza y arriba del centro (no en una esquina, por el recorte de la transmisión); marcador en el mismo cuadro; nombres de eventos; stream LSL; grabación; exportación a CSV; lista de comprobación.
+- **SPEC §16** (nuevo) y una línea en §8.2: traducción video ↔ LSL **lineal por tramos** entre destellos, controles de calidad (coherencia de intervalos, ritmo por tramo, residuo de la recta global), detección automática de destellos, tabla de revisión con ajuste cuadro a cuadro, y ampliación del bloque `sincronizacion` del JSON (las columnas de los CSV no cambian). Fases nuevas 9, 10 y 11.
+
 Siguientes pasos:
 
-1. **Tiempo LSL** (lo que el investigador señaló en el mensaje del commit). Falta precisar con él qué se necesita. Hoy el tiempo LSL se calcula después, a partir de la fila `sync` del CSV de eventos y del segundo del destello en el video (SPEC §8.2); transmitir por LSL en tiempo real está fuera de alcance (SPEC §15).
-2. Prueba en la tablet Android instalada desde GitHub Pages (ver «Fase 8: lo que falta»).
+1. **Aprobado (2026-10-06):** destello cada 60 s, 300 ms, arriba del centro de la vista; el cambio del JSON de §16.6 (anotado en CLAUDE.md); y el script `scripts/xdf_a_eventos.py`, que se hace en la fase 9.
+2. **Siguiente: fase 9** (lógica por tramos con pruebas y el script XDF → CSV), luego fase 10 (detección y revisión) y fase 11 (prueba con una grabación real de la Quest).
+3. Sigue pendiente la prueba en la tablet Android instalada desde GitHub Pages (ver «Fase 8: lo que falta»).
 
 **Arreglo de «Compartir» confirmado (2026-10-06):** el investigador compartió los CSV por AirDrop desde su MacBook. Se empieza la fase 8.
 

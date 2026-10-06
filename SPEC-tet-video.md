@@ -222,6 +222,7 @@ tiempo,evento,icono
   - tiempo LSL de un punto del trazo: `t_lsl = S_lsl + (t_video − S_video)`
 - Sin fila sync: `t_video = S_video + t_evento` y la columna `tiempo_lsl_s` queda vacía.
 - Descartar eventos fuera de [0, duración].
+- **Con varios destellos** (filas `sync_1`, `sync_2`, …) la sincronización se hace por tramos: ver §16. Lo anterior es el caso de un solo destello.
 
 ### 8.3 Archivos de salida
 
@@ -337,3 +338,63 @@ Al final de cada fase: ejecutar las pruebas, resumir qué se hizo y esperar revi
 - Transmitir el trazo por LSL en tiempo real.
 - Grabar el video dentro de la app.
 - Cuentas de usuario o sincronización con un servidor.
+
+## 16. Sincronización con varios destellos (v2, propuesta 2026-10-06)
+
+> Aprobado por el investigador el 2026-10-06 (ritmo y aspecto del destello, y el cambio del JSON de §16.6). Los cambios correspondientes en el juego están en [GAME-SPECS.md](GAME-SPECS.md).
+
+### 16.1 Motivo
+
+La grabación de la Quest pasa por la transmisión a la app Meta Horizon del celular: tiene un retraso inicial y puede perder o repetir cuadros. Con un solo destello (§8.2) solo se corrige el retraso; con varios, también la deriva y los saltos. Una partida típica dura unos 5 minutos y el juego emite un destello al pulsar «Iniciar partida», uno cada 60 s y uno al final (6 o 7 en total).
+
+### 16.2 Puntos de sincronización
+
+- Toda fila del CSV de eventos cuya etiqueta empiece por `sync` o `sincron` es un **punto de sincronización** y no se muestra como evento. Se ordenan por tiempo LSL: `L_1 < L_2 < … < L_N`.
+- A cada uno le corresponde un destello en el video, en el segundo `V_k`. Los `V_k` se obtienen por **detección automática** (§16.4) o se marcan a mano (§16.5).
+- Emparejamiento por orden: el k-ésimo destello del video con el k-ésimo `sync` del CSV.
+
+### 16.3 Traducción video ↔ LSL
+
+- **Con N ≥ 2 puntos: lineal por tramos.** Entre `V_k` y `V_{k+1}`: `t_lsl = L_k + (t_video − V_k) · (L_{k+1} − L_k) / (V_{k+1} − V_k)`. Antes de `V_1` y después de `V_N` se extiende el primer y el último tramo. La traducción inversa (eventos del CSV al video) usa los mismos tramos.
+- **Con N = 1**, la fórmula de §8.2 (pendiente 1). **Sin filas sync**, como hoy: sin tiempo LSL.
+- **Controles de calidad**, que la pantalla de configuración muestra y el JSON guarda:
+  - **Coherencia de intervalos:** para cada tramo, `(V_{k+1} − V_k) − (L_{k+1} − L_k)`. Si alguna diferencia supera 0,5 s, hay un destello perdido, uno de más o un emparejamiento errado: se avisa en rojo y no se puede comenzar hasta revisarlo (o pasar a un solo destello).
+  - **Ritmo** de cada tramo, `(L_{k+1} − L_k) / (V_{k+1} − V_k)`, como porcentaje de desviación respecto a 1.
+  - **Residuo de la recta global:** se ajusta por mínimos cuadrados `t_lsl = a + b · t_video` con todos los puntos y se informa el residuo máximo en milisegundos. Es solo un indicador de cuánto se aparta la grabación de un ritmo constante; la traducción usa los tramos.
+
+### 16.4 Detección automática de destellos
+
+- Al cargar el video y el CSV, la pantalla de configuración recorre el video **sin sonido y sin mostrarlo al niño**, a velocidad 4× si el navegador lo permite, y mide el brillo medio de una cuadrícula de 8×6 celdas en cada cuadro (`requestVideoFrameCallback` cuando exista; si no, `requestAnimationFrame`).
+- Un destello es una subida brusca de brillo en una o más celdas contiguas que dura entre 0,1 y 0,8 s. Se elige la celda o región en la que aparecen picos cuyo número e intervalos mejor coinciden con los `sync` del CSV.
+- **Refinamiento:** alrededor de cada candidato se salta cuadro por cuadro (±0,5 s) para encontrar el primer cuadro del destello. Precisión esperada: un cuadro (unos 33 ms a 30 fps).
+- Se muestra una barra de progreso y se puede cancelar. Para un video de 5 minutos se espera menos de 2 minutos de análisis.
+
+### 16.5 Revisión y ajuste manual
+
+- La pantalla de configuración muestra una tabla con cada punto: etiqueta, `L_k`, `V_k`, diferencia de intervalo y un botón **«Ver»** que muestra el cuadro del destello y permite moverse cuadro a cuadro (◀ ▶) para corregir `V_k`.
+- Si la detección no encuentra todos los destellos, el investigador puede marcarlos a mano con el mismo visor, o quedarse con un solo destello (el campo actual de §6).
+
+### 16.6 Cambios en los archivos de salida
+
+- Las columnas de los CSV **no cambian**; `tiempo_lsl_s` se calcula con §16.3.
+- En el JSON, `sincronizacion` conserva `video_s` y `lsl_s` (los del primer punto) para los scripts existentes, y agrega:
+
+```json
+"sincronizacion": {
+  "video_s": 12.4, "lsl_s": 1532.4,
+  "modelo": "tramos",
+  "puntos": [{ "etiqueta": "sync_1", "video_s": 12.4, "lsl_s": 1532.4, "origen": "auto" }],
+  "ritmo_por_tramo": [0.9994],
+  "dif_intervalo_max_s": 0.03,
+  "residuo_recta_max_ms": 41
+}
+```
+
+- `modelo` es `"tramos"`, `"un_punto"` o `"sin_sync"`; `origen` es `"auto"` o `"manual"`.
+
+### 16.7 Fases de trabajo
+
+9. **Lógica de sincronización por tramos con pruebas:** varios `sync` en `events.ts`, traducción por tramos en ambos sentidos, controles de calidad, cambios en `export.ts` (§16.6). Pruebas con puntos sintéticos, deriva, un salto y un destello faltante. Además, el script `scripts/xdf_a_eventos.py` (Python con `pyxdf`) que exporta el CSV de eventos desde el XDF de LabRecorder (GAME-SPECS §7).
+10. **Detección de destellos y tabla de revisión** en la pantalla de configuración (§16.4, §16.5).
+11. **Prueba con una grabación real** de la Quest hecha con la app Meta Horizon, y ajuste de umbrales.
+

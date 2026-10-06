@@ -16,7 +16,8 @@ Aplicación PWA de trazado de experiencia con video para niños (doctorado, UTP)
 Prevalecen sobre el texto del SPEC:
 
 1. **El JSON de salida va sin BOM.** Solo los 3 CSV llevan BOM, aunque §8.3 dice «todos». Motivo: con BOM, `json.load` de Python y otros lectores fallan.
-2. **Coma decimal con separador coma** (`1532,40,sync`): es ambiguo y el lector **no** lo resuelve; se lee como tiempo 1532 y etiqueta «40». En la fase 4, la pantalla de configuración debe **mostrar un aviso** junto al campo del CSV de eventos: usar `;`, tabulador o comillas si los números llevan coma decimal.
+2. **JSON: bloque `sincronizacion` ampliado** (SPEC §16.6, aprobado 2026-10-06): conserva `video_s` y `lsl_s` del primer punto y agrega `modelo`, `puntos`, `ritmo_por_tramo`, `dif_intervalo_max_s` y `residuo_recta_max_ms`. Las columnas de los CSV no cambian.
+3. **Coma decimal con separador coma** (`1532,40,sync`): es ambiguo y el lector **no** lo resuelve; se lee como tiempo 1532 y etiqueta «40». En la fase 4, la pantalla de configuración debe **mostrar un aviso** junto al campo del CSV de eventos: usar `;`, tabulador o comillas si los números llevan coma decimal.
 
 Decisiones de la fase 2 aceptadas sin objeción:
 
