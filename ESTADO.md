@@ -8,8 +8,8 @@
 |---|---|---|
 | 1. Base del proyecto (Vite, PWA sin conexión, fuentes, tokens) | Revisada | `64c08ce` Phase 1 is builded |
 | 2. Lógica de datos con pruebas | Revisada | `770f3ac` phase 2 builded |
-| 3. Reproductores (`VideoPlayer`, `VirtualPlayer`) | **Construida, pendiente de revisión en navegador** | se sube junto con este archivo |
-| 4. Pantalla de configuración | Sin empezar | — |
+| 3. Reproductores (`VideoPlayer`, `VirtualPlayer`) | Revisada en navegador | `7ed4cdd` y «Video players working, phase 3 builded» |
+| 4. Pantalla de configuración | **En curso** | — |
 | 5. Pantalla de trazado | Sin empezar | — |
 | 6. Pantalla final y exportaciones | Sin empezar | — |
 | 7. IndexedDB y sesiones guardadas | Sin empezar | — |
@@ -19,15 +19,9 @@ Pruebas: 123 de 123 pasan (`npm test`). El chequeo de tipos y el build no dan er
 
 ## Dónde quedamos
 
-La fase 3 está construida, pero **el investigador aún no la ha probado en un navegador real**. Siguiente paso:
+**La fase 3 quedó revisada (2026-10-05).** En el Mac se instaló Node.js (v26, con Homebrew), se corrieron `npm install` y `npm run dev`, y el investigador probó los reproductores en un navegador real con el banco de pruebas temporal: carga de video, práctica (40 s), grabación de ejemplo (120 s), reproducir y pausar, saltos con la barra, cambio de velocidad y aviso de fin. Todo funcionó.
 
-1. En el computador nuevo: instalar Node.js, y dentro de `tet-video/` correr `npm install` y luego `npm run dev`.
-2. Abrir la dirección que muestra Vite. La primera tarjeta, «Probar reproductores (fase 3, temporal)», permite:
-   - cargar un video, o abrir la práctica (40 s) o la grabación de ejemplo (120 s);
-   - reproducir y pausar, arrastrar la barra para saltar y cambiar la velocidad;
-   - ver el tiempo, los saltos y el aviso de fin.
-3. Probar con un MP4 y con un WebM grabado con MediaRecorder (duración `Infinity`), a ser posible en la tablet Android.
-4. Si todo está bien, el investigador hace el commit de la fase 3 (o pide que se haga) y se pasa a la fase 4.
+**Fase 4 (pantalla de configuración): en curso.**
 
 ## Pendientes para la fase 4
 
