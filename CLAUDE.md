@@ -62,7 +62,10 @@ npm test           # Vitest
 npm run build      # tsc + vite build + service worker
 npm run preview    # sirve dist/ (con service worker: puede mostrar una versión en caché)
 node scripts/make-icons.mjs   # regenera los íconos de public/icons
+bash scripts/deploy-pages.sh  # publica dist/ en GitHub Pages (repo público gitorivera/tet-app)
 ```
+
+Publicación: la app compilada se publica en un repositorio **público aparte** (`gitorivera/tet-app`, GitHub Pages desde `main`), que solo contiene `dist/`. Este repositorio sigue privado. El script exige que no haya cambios sin commit y reemplaza la publicación anterior.
 
 Requiere Node.js 20 o posterior (se desarrolló con Node 24 LTS). En Windows: `winget install OpenJS.NodeJS.LTS`.
 

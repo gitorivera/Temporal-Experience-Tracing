@@ -6,6 +6,7 @@ import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
 import { APP_VERSION, configPorDefecto, setPlan, type Config, type Dimension } from '../state';
 import { mountSavedSessions } from './savedSessions';
+import { enterSessionMode, exitSessionMode } from '../device';
 
 type ParsedOk = Extract<ParseResult, { ok: true }>;
 
@@ -31,6 +32,8 @@ const DIM_FIELDS: readonly { key: keyof Dimension; label: string }[] = [
 ];
 
 export const mountSetup: MountScreen = (root, go) => {
+  // La pantalla del investigador no va en pantalla completa ni con la orientación bloqueada.
+  exitSessionMode();
   const store = getStore();
   const cfg: Config = loadSavedConfig(store);
 
@@ -514,6 +517,8 @@ export const mountSetup: MountScreen = (root, go) => {
       orden: dimensionOrder(config),
     });
     handedOff = true;
+    // Pantalla completa y horizontal desde el gesto del botón (SPEC §7.9).
+    void enterSessionMode();
     go('tracing');
   });
 

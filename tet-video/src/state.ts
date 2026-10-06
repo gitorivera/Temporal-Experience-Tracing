@@ -106,6 +106,10 @@ export interface FinishedSession {
   session: SessionData;
   /** Resultado del último guardado en IndexedDB: true si quedó guardada en el dispositivo. */
   guardado: Promise<boolean>;
+  /** Dimensiones planeadas (sin la práctica). */
+  totalDimensiones: number;
+  /** El investigador terminó la sesión antes de responder todas las dimensiones. */
+  terminadaAntes: boolean;
 }
 
 let finishedSession: FinishedSession | null = null;

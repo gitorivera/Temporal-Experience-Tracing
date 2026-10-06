@@ -13,9 +13,9 @@
 | 5. Pantalla de trazado | Revisada | `260975d` Phase 5 builded, raw dimensions adquired |
 | 6. Pantalla final y exportaciones | Revisada | `409ace7` traces ready, download buttons ready, no multiple downloads enabled |
 | 7. IndexedDB y sesiones guardadas | Revisada | `5e4a962` Phase 7 ready, persistent saving and config table; arreglo de «Compartir»: Sharing files enabled |
-| 8. Pulido para tablet | **En curso** | — |
+| 8. Pulido para tablet | Construida; falta la prueba en la tablet real | Phase 8 ready, app created |
 
-Pruebas: 181 de 181 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
+Pruebas: 185 de 185 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md.
 
@@ -25,6 +25,20 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 **Arreglo de «Compartir» confirmado (2026-10-06):** el investigador compartió los CSV por AirDrop desde su MacBook. Se empieza la fase 8.
 
+### Fase 8 (2026-10-06): lo construido
+
+Commit «Phase 8 ready, app created». Archivos: `src/device.ts` (nuevo), `src/screens/setup.ts`, `src/screens/tracing.ts`, `src/screens/done.ts`, `src/state.ts`, `src/styles.css`, `tests/device.test.ts` (nuevo).
+
+- **Pantalla completa y orientación horizontal** al pulsar «Comenzar sesión» (desde el gesto del botón). Se sale de la pantalla completa al volver a la configuración. Si el navegador no puede bloquear la orientación y la tablet está vertical, la pantalla del niño muestra «Gira la tablet».
+- **Pantalla encendida** con Screen Wake Lock durante la pantalla de trazado (`ScreenAwake`); se vuelve a pedir al regresar de segundo plano. Tiene pruebas.
+- **Salida del investigador** (decisión del investigador: mantener pulsado): mantener pulsado 2 s el indicador «2 de 4» (o «Práctica») abre «Opciones del investigador», con «Seguir con la sesión» o «Terminar la sesión aquí». Un toque corto no hace nada. Si se abre durante una grabación, la pasada se anula (si se sigue, el niño la repite). Al terminar, la pantalla final avisa «El investigador terminó la sesión antes de tiempo: N de M dimensiones», y la sesión queda incompleta en la tabla.
+- **Accesibilidad:** el deslizador tiene `role="slider"`, `aria-valuenow` (0 a 100), `aria-label` con la pregunta y `aria-disabled` fuera de la grabación. No hay animaciones; `prefers-reduced-motion` ya las desactiva todas.
+- Probado en Brave sin interfaz: pantalla completa activa en la sesión y desactivada al volver; toque corto sin efecto y pulsación larga que abre la tarjeta; salida con la sesión guardada como «Incompleta (0 de 2)»; aviso de girar en vertical. La consola no mostró errores.
+
+### Fase 8: lo que falta (necesita la tablet Android)
+
+- **Publicación en GitHub Pages (decisión del investigador):** por `http://192.168.1.2:5173` la página no es un «contexto seguro» (sin service worker, sin instalación, sin Wake Lock), así que se publica con HTTPS. La app compilada va a un repositorio **público aparte**, `gitorivera/tet-app`, con `bash scripts/deploy-pages.sh`; el código sigue en este repositorio privado. URL: https://gitorivera.github.io/tet-app/ (el investigador debe activar Pages: Settings → Pages → Deploy from a branch → `main`, `/ (root)`).
+- Luego, en la tablet: instalar como app, probar sin conexión, el tacto en ambos modos, la rotación, un MP4 y un WebM de MediaRecorder, un video muy corto (< 5 s) y uno muy largo (> 30 min), y abrir los CSV.
 ### Historia del fallo de «Compartir» (2026-10-05)
 
 - **Primer intento:** en la MacBook del investigador, «Compartir los 4 archivos» de la pantalla final mostró «No se pudo compartir». Causa probable: Chrome y los navegadores basados en él solo permiten compartir ciertos tipos (los `.csv` sí, los `.json` no), y el envío es todo o nada; además, el tipo `;charset=utf-8` puede no reconocerse. Arreglo: «Compartir» envía solo los 3 CSV, con el tipo `text/csv` sin parámetros, y el JSON se descarga con su botón. El aviso muestra ahora el motivo técnico.
@@ -73,7 +87,5 @@ Lo que se revisó:
 
 ## Para la fase 8
 
-- Pantalla completa y orientación horizontal al iniciar la sesión (desde el gesto de «Comenzar sesión»), y Screen Wake Lock durante la sesión, pidiéndolo de nuevo al volver de segundo plano (SPEC §7.9).
-- Prueba en la tablet Android real, instalada como app: sin conexión, tacto, rotación, video MP4 y WebM de MediaRecorder, video muy corto (< 5 s) y muy largo (> 30 min).
-- Revisión de accesibilidad y de `prefers-reduced-motion`.
-- Pendiente de decidir: alguna forma, solo para el investigador, de salir a mitad de la sesión.
+- Ver «Fase 8: lo que falta» más arriba.
+- `src/device.ts`: `enterSessionMode`, `exitSessionMode`, `ScreenAwake`. `scripts/deploy-pages.sh`: publicación en GitHub Pages.

@@ -9,6 +9,7 @@ import { PRACTICE_DIMENSION } from '../practice';
 import { setFinished, takePlan, type Dimension, type DimensionRecord, type SessionData } from '../state';
 import { putSession, toStored } from '../data/storage';
 import { DimensionRecorder, VALOR_INICIAL } from '../trace/recorder';
+import { ScreenAwake } from '../device';
 import {
   drawGraph,
   drawTimeline,
@@ -91,7 +92,8 @@ export const mountTracing: MountScreen = (root, go) => {
       </div>
       <canvas class="tr-timeline" aria-label="Línea de tiempo del video. Toca o arrastra para ir a un momento."></canvas>
       <canvas class="tr-graph" aria-label="Área para dibujar la línea"></canvas>
-      <div class="tr-slider" ${slider ? '' : 'hidden'} aria-label="Deslizador"><div class="tr-thumb"></div></div>
+      <div class="tr-slider" ${slider ? '' : 'hidden'} role="slider" aria-orientation="vertical"
+        aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><div class="tr-thumb"></div></div>
     </div>
     <footer class="tr-bottom">
       <button type="button" class="btn sea kid" id="tr-run">▶ Empezar</button>
@@ -104,6 +106,20 @@ export const mountTracing: MountScreen = (root, go) => {
         <p class="big tr-intro-q"></p>
         <p class="tr-intro-p"></p>
         <button type="button" class="btn primary kid" id="tr-go">¡Vamos!</button>
+      </div>
+    </div>
+    <div class="tr-rotate" aria-live="polite">
+      <span class="tr-rotate-icon" aria-hidden="true">↻</span>
+      <p class="big">Gira la tablet</p>
+    </div>
+    <div class="tr-intro tr-admin" role="dialog" aria-modal="true" aria-labelledby="tr-admin-t" hidden>
+      <div class="tr-intro-box tr-admin-box">
+        <p class="big tr-intro-q" id="tr-admin-t">Opciones del investigador</p>
+        <p class="tr-intro-p tr-admin-p"></p>
+        <div class="row tr-admin-actions">
+          <button type="button" class="btn kid" id="tr-admin-seguir">Seguir con la sesión</button>
+          <button type="button" class="btn danger kid" id="tr-admin-fin">Terminar la sesión aquí</button>
+        </div>
       </div>
     </div>
   `;
@@ -127,6 +143,10 @@ export const mountTracing: MountScreen = (root, go) => {
   const introQ = q('.tr-intro-q');
   const introP = q('.tr-intro-p');
   const btnGo = q<HTMLButtonElement>('#tr-go');
+  const admin = q('.tr-admin');
+  const adminP = q('.tr-admin-p');
+  const btnAdminSeguir = q<HTMLButtonElement>('#tr-admin-seguir');
+  const btnAdminFin = q<HTMLButtonElement>('#tr-admin-fin');
 
   // ------------------------------------------------------------------------
   // Estado de la dimensión en curso
@@ -161,6 +181,8 @@ export const mountTracing: MountScreen = (root, go) => {
       const v = rec.state === 'grabando' ? rec.value : VALOR_INICIAL;
       thumb.style.top = `${sliderTopFromValue(v, sliderBox.clientHeight, THUMB)}px`;
       sliderBox.classList.toggle('inactive', rec.state !== 'grabando');
+      sliderBox.setAttribute('aria-valuenow', String(Math.round(v * 100)));
+      sliderBox.setAttribute('aria-disabled', String(rec.state !== 'grabando'));
     }
   }
 
@@ -407,6 +429,7 @@ export const mountTracing: MountScreen = (root, go) => {
     pill.classList.toggle('practice', item.practica);
     const n = items.slice(0, i + 1).filter((it) => !it.practica).length;
     pill.textContent = item.practica ? 'Práctica' : `${n} de ${plan!.orden.length}`;
+    sliderBox.setAttribute('aria-label', item.dimension.pregunta);
 
     hideConfirm();
     setMsg('');
@@ -473,14 +496,75 @@ export const mountTracing: MountScreen = (root, go) => {
     };
   }
 
-  function endSession() {
-    setFinished({ session: buildSession(), guardado: saveChain });
+  /** `antes`: el investigador terminó la sesión sin responder todas las dimensiones. */
+  function endSession(antes = false) {
+    setFinished({
+      session: buildSession(),
+      guardado: saveChain,
+      totalDimensiones: plan!.orden.length,
+      terminadaAntes: antes,
+    });
     go('done');
   }
+
+  // ------------------------------------------------------------------------
+  // Salida del investigador: mantener pulsado el indicador «2 de 4» (o «Práctica»)
+  // ------------------------------------------------------------------------
+  const LONG_PRESS_MS = 2000;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  const cancelPress = () => {
+    if (pressTimer !== null) clearTimeout(pressTimer);
+    pressTimer = null;
+  };
+  pill.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    cancelPress();
+    pressTimer = setTimeout(openAdmin, LONG_PRESS_MS);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave'] as const) pill.addEventListener(type, cancelPress);
+  pill.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  function openAdmin() {
+    pressTimer = null;
+    if (rec.state === 'grabando') {
+      // La pasada en curso no vale: si el investigador decide seguir, el niño la repite.
+      item.player.pause();
+      rec.interrupt();
+      stopLoop();
+      fingerDown = false;
+      sliderDrag = false;
+      setMsg(MSG.interrumpida);
+      updateControls();
+      render();
+    }
+    const total = plan!.orden.length;
+    const hechas = dimensiones.length;
+    adminP.textContent =
+      `Quedaron guardadas ${hechas} de ${total} ${total === 1 ? 'dimensión' : 'dimensiones'}` +
+      `${practicaRec ? ' y la práctica' : ''}. Si terminas aquí, la dimensión en curso no se guarda.`;
+    admin.hidden = false;
+    btnAdminSeguir.focus();
+  }
+
+  btnAdminSeguir.addEventListener('click', () => {
+    admin.hidden = true;
+    (intro.hidden ? btnRun : btnGo).focus();
+  });
+  btnAdminFin.addEventListener('click', () => {
+    admin.hidden = true;
+    item.player.pause();
+    endSession(true);
+  });
+
+  // Mantener la pantalla encendida durante la sesión (SPEC §7.9).
+  const awake = new ScreenAwake();
+  awake.start();
 
   startItem(0);
 
   return () => {
+    cancelPress();
+    awake.stop();
     stopLoop();
     offEnded();
     ro.disconnect();

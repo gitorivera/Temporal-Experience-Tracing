@@ -56,6 +56,7 @@ export const mountDone: MountScreen = (root, go) => {
     <details class="card done-panel" id="panel" hidden>
       <summary>Para el investigador</summary>
       <p class="status" id="guardado" aria-live="polite">Guardando la sesión en este dispositivo…</p>
+      <p class="notice warn" id="aviso-antes" hidden></p>
       <p class="notice warn" id="aviso-ejemplo" hidden>
         Esta sesión usó la grabación de ejemplo: los datos sirven solo para probar la aplicación.
       </p>
@@ -121,9 +122,14 @@ export const mountDone: MountScreen = (root, go) => {
 
   const guardado = $('guardado');
   let alive = true;
+  const vacia = s.practica === null && s.dimensiones.length === 0;
   void finished!.guardado.then((ok) => {
     if (!alive) return;
-    if (ok) {
+    if (vacia) {
+      // Se terminó antes de completar nada: no hay nada guardado ni que descargar con sentido.
+      guardado.textContent = 'No se terminó ninguna dimensión: esta sesión no tiene datos.';
+      guardado.className = 'status warn';
+    } else if (ok) {
       guardado.textContent = 'Sesión guardada en este dispositivo. También aparece en la tabla de sesiones guardadas.';
       guardado.className = 'status ok';
     } else {
@@ -134,6 +140,11 @@ export const mountDone: MountScreen = (root, go) => {
     }
   });
   $('aviso-ejemplo').hidden = s.grabacion !== null;
+  if (finished!.terminadaAntes) {
+    const p = $('aviso-antes');
+    p.textContent = `El investigador terminó la sesión antes de tiempo: ${s.dimensiones.length} de ${finished!.totalDimensiones} dimensiones respondidas.`;
+    p.hidden = false;
+  }
 
   // Metadatos
   const meta = $('meta');

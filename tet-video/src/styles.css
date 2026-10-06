@@ -741,3 +741,48 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+/* Tarjeta del investigador durante la sesión (mantener pulsado el indicador). */
+.tr-admin {
+  z-index: 6;
+}
+.tr-admin-box {
+  border-color: var(--sea);
+}
+.tr-admin-actions {
+  justify-content: center;
+}
+.tracing .pill {
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.notice + .notice {
+  margin-top: 8px;
+}
+
+/* Si el navegador no pudo bloquear la orientación y la tablet está vertical: pedir que la giren. */
+.tr-rotate {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 1024px) {
+  .tr-rotate {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+  }
+  .tr-rotate .big {
+    font-size: 2.2rem;
+  }
+  .tr-rotate-icon {
+    font-size: 4rem;
+    line-height: 1;
+  }
+}
