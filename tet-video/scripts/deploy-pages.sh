@@ -17,6 +17,9 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 COMMIT="$(git rev-parse --short HEAD)"
+# Mismo autor que el commit publicado (no depende de que git tenga user.name configurado).
+AUTHOR_NAME="$(git log -1 --format=%an)"
+AUTHOR_EMAIL="$(git log -1 --format=%ae)"
 
 npm test
 npm run build
@@ -30,7 +33,7 @@ touch "$TMP/.nojekyll"
 cd "$TMP"
 git init -q -b "$BRANCH"
 git add -A
-git -c user.name="$(git -C "$OLDPWD" config user.name)" -c user.email="$(git -C "$OLDPWD" config user.email)" \
+git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" \
   commit -q -m "App TET compilada desde el commit $COMMIT"
 # Cada publicación reemplaza a la anterior: el historial del repositorio público no importa.
 git push -q --force "$REPO" "$BRANCH"

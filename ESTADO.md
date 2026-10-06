@@ -23,6 +23,13 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 ## Dónde quedamos (para empezar la próxima sesión)
 
+**Primera versión terminada (2026-10-06), commit «First version finished, need for LSL timing».** Las 8 fases están construidas y la app está publicada en https://gitorivera.github.io/tet-app/.
+
+Siguientes pasos:
+
+1. **Tiempo LSL** (lo que el investigador señaló en el mensaje del commit). Falta precisar con él qué se necesita. Hoy el tiempo LSL se calcula después, a partir de la fila `sync` del CSV de eventos y del segundo del destello en el video (SPEC §8.2); transmitir por LSL en tiempo real está fuera de alcance (SPEC §15).
+2. Prueba en la tablet Android instalada desde GitHub Pages (ver «Fase 8: lo que falta»).
+
 **Arreglo de «Compartir» confirmado (2026-10-06):** el investigador compartió los CSV por AirDrop desde su MacBook. Se empieza la fase 8.
 
 ### Fase 8 (2026-10-06): lo construido
@@ -38,6 +45,7 @@ Commit «Phase 8 ready, app created». Archivos: `src/device.ts` (nuevo), `src/s
 ### Fase 8: lo que falta (necesita la tablet Android)
 
 - **Publicación en GitHub Pages (decisión del investigador):** por `http://192.168.1.2:5173` la página no es un «contexto seguro» (sin service worker, sin instalación, sin Wake Lock), así que se publica con HTTPS. La app compilada va a un repositorio **público aparte**, `gitorivera/tet-app`, con `bash scripts/deploy-pages.sh`; el código sigue en este repositorio privado. URL: https://gitorivera.github.io/tet-app/ (el investigador debe activar Pages: Settings → Pages → Deploy from a branch → `main`, `/ (root)`).
+  - 2026-10-06: primera publicación (el commit `67840db` compilado) en `gitorivera/tet-app`; Pages activado, https://gitorivera.github.io/tet-app/ responde. Para publicar una versión nueva: hacer el commit y correr `bash scripts/deploy-pages.sh` dentro de `tet-video/` (toma el autor del último commit).
 - Luego, en la tablet: instalar como app, probar sin conexión, el tacto en ambos modos, la rotación, un MP4 y un WebM de MediaRecorder, un video muy corto (< 5 s) y uno muy largo (> 30 min), y abrir los CSV.
 ### Historia del fallo de «Compartir» (2026-10-05)
 
