@@ -42,8 +42,16 @@ Decisiones de la fase 5 aceptadas sin objeción:
 Decisiones de la fase 6 aceptadas por el investigador:
 
 - Frase de la correlación de la práctica: r ≥ 0,5 buena; 0,2 ≤ r < 0,5 parcial; r < 0,2 dudosa (`src/summary.ts`).
-- **No hay botón «Descargar todos»** por ahora (el investigador lo prefiere así): un botón por archivo y «Compartir» los 4 juntos.
+- **No hay botón «Descargar todos»** por ahora (el investigador lo prefiere así): un botón por archivo.
+- «Compartir» envía solo los 3 CSV (Chrome no permite compartir `.json`, y el envío es todo o nada); el JSON se descarga con su botón. Un envío a la vez: mientras uno sigue abierto, no se lanza otro.
 - La sección del investigador de la pantalla final empieza plegada.
+
+Decisiones de la fase 7 aceptadas sin objeción:
+
+- La sesión entera se guarda en IndexedDB (upsert por `id = inicio_participante`) al terminar la práctica y cada dimensión; es completa cuando tiene todas las dimensiones planeadas.
+- Si falla el guardado, el niño no se entera; la pantalla final lo avisa y «Nueva sesión» pide confirmación.
+- En el ZIP, si dos sesiones dan el mismo nombre base, la carpeta de la segunda lleva «_2».
+- Las llamadas a IndexedDB se prueban en el navegador, no con Vitest (no se agregó `fake-indexeddb`).
 
 ## Comandos (dentro de `tet-video/`)
 

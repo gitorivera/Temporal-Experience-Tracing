@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-05.
+Última actualización: 2026-10-06.
 
 ## Fases (SPEC §12)
 
@@ -12,24 +12,32 @@
 | 4. Pantalla de configuración | Revisada | `68cae27` Phase 4 builded, configuration is ready |
 | 5. Pantalla de trazado | Revisada | `260975d` Phase 5 builded, raw dimensions adquired |
 | 6. Pantalla final y exportaciones | Revisada | `409ace7` traces ready, download buttons ready, no multiple downloads enabled |
-| 7. IndexedDB y sesiones guardadas | Revisada, con un fallo pendiente (ZIP) | Phase 7 ready, persistent saving and config table |
-| 8. Pulido para tablet | Sin empezar | — |
+| 7. IndexedDB y sesiones guardadas | Revisada | `5e4a962` Phase 7 ready, persistent saving and config table; arreglo de «Compartir»: Sharing files enabled |
+| 8. Pulido para tablet | **En curso** | — |
 
-Pruebas: 177 de 177 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
+Pruebas: 181 de 181 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
 
-Las decisiones aceptadas de las fases 2, 4, 5 y 6 están en CLAUDE.md.
+Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md.
 
-Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`).
+Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`). Para retomar: dentro de `tet-video/`, `npm run dev` (el servidor no queda corriendo entre sesiones).
 
-## Dónde quedamos
+## Dónde quedamos (para empezar la próxima sesión)
 
-**Fase 7 revisada (2026-10-05).** El investigador confirmó que las sesiones se guardan, que la tabla se ve bien y que la frase de la correlación aparece.
+**Arreglo de «Compartir» confirmado (2026-10-06):** el investigador compartió los CSV por AirDrop desde su MacBook. Se empieza la fase 8.
 
-**Fallo pendiente:** en la prueba del investigador, el botón «Exportar todas las sesiones (ZIP)» no descargó el archivo. En Brave sin interfaz sí lo descargó. Falta saber en qué dispositivo y navegador ocurrió, y qué pasó exactamente (nada, un aviso, una descarga bloqueada).
+### Historia del fallo de «Compartir» (2026-10-05)
+
+- **Primer intento:** en la MacBook del investigador, «Compartir los 4 archivos» de la pantalla final mostró «No se pudo compartir». Causa probable: Chrome y los navegadores basados en él solo permiten compartir ciertos tipos (los `.csv` sí, los `.json` no), y el envío es todo o nada; además, el tipo `;charset=utf-8` puede no reconocerse. Arreglo: «Compartir» envía solo los 3 CSV, con el tipo `text/csv` sin parámetros, y el JSON se descarga con su botón. El aviso muestra ahora el motivo técnico.
+- **Segundo intento:** el aviso mostró `InvalidStateError: An earlier share has not yet completed`, es decir, se pidió un envío mientras otro seguía abierto (doble toque, o el menú de macOS quedó abierto detrás de la ventana). Arreglo: `shareFiles` no lanza un segundo envío mientras el primero no termina y devuelve `'compartido' | 'cancelado' | 'ocupado'`. El botón se deshabilita durante el envío y, si está ocupado, el aviso explica que hay que cerrar o terminar el menú abierto. Tiene pruebas en `tests/download.test.ts`.
+- Nota: el ZIP («Exportar todas las sesiones») no tuvo ningún fallo. La confusión inicial fue sobre cuál botón falló.
+
+### Revisión de la fase 7 (hecha)
+
+El investigador confirmó que las sesiones se guardan, que la tabla se ve bien y que la frase de la correlación aparece.
 
 Pruebas previas: se comprobó en Brave sin interfaz el criterio de aceptación del SPEC §14: en una sesión de 3 dimensiones se respondieron 2 y se recargó la pestaña. La sesión apareció en la tabla como «Incompleta (2 de 3 dimensiones)», y su `_10hz.csv` trae 1201 filas de cada una de las 2 dimensiones. También se probaron el ZIP (una carpeta con los 4 archivos) y «Borrar» con dos toques. La consola no mostró errores.
 
-Qué revisar:
+Lo que se revisó:
 
 1. Hacer una sesión y, a mitad, recargar o cerrar la pestaña. Al volver, la tabla «Sesiones guardadas en este dispositivo» la muestra como incompleta, con sus dimensiones descargables.
 2. Terminar una sesión: la pantalla final dice «Sesión guardada en este dispositivo», y «Nueva sesión» ya no pide confirmación.
@@ -37,7 +45,7 @@ Qué revisar:
 4. «Exportar todas las sesiones (ZIP)»: una carpeta por sesión con sus 4 archivos.
 5. El aviso sobre el almacenamiento persistente. En el navegador sin interfaz se negó; en Android, con la app instalada, Chrome suele concederlo.
 
-## Decisiones de la fase 7 (para que el investigador las confirme)
+## Decisiones de la fase 7 (aceptadas sin objeción; resumidas en CLAUDE.md)
 
 - **Qué se guarda y cuándo:** la sesión entera se guarda (upsert por `id = inicio_participante`) al terminar la práctica y al terminar cada dimensión. Si se interrumpe tras la práctica, aparece como «Incompleta (0 de N)», con la práctica en el CSV a 10 Hz y en el de toques.
 - **Una sesión es completa** cuando tiene todas las dimensiones planeadas. Se guarda también cuántas había planeadas, para mostrar «2 de 4».
@@ -53,7 +61,7 @@ Qué revisar:
 - `src/trace/render.ts`: geometría compartida por la gráfica, la línea de tiempo y el deslizador (con pruebas) y su dibujo en canvas (`drawGraph`, `drawTimeline`, `drawMini`, `fitCanvas`, `readPalette`).
 - `src/data/events.ts`: lectura del CSV de eventos, `iconFor`, sincronización (`eventToVideo`, `videoToLsl`, `toVideoEvents`).
 - `src/data/export.ts`: los 4 archivos de salida (`buildAllFiles`), `fileBase`, `isoLocal`.
-- `src/data/download.ts`: `downloadFile`, `downloadBlob`, `canShareFiles`, `shareFiles`.
+- `src/data/download.ts`: `downloadFile`, `downloadBlob`, `shareableFiles` (solo los CSV), `canShareFiles`, `shareFiles` (un envío a la vez; devuelve `compartido`/`cancelado`/`ocupado`), `shareErrorMessage`.
 - `src/data/storage.ts`: IndexedDB con `idb` (`putSession`, `getSession`, `listSessions`, `deleteSession`), `requestPersistence`, y la parte pura con pruebas (`sessionId`, `toStored`, `sortSessions`, `estadoTexto`, `buildZip`, `zipName`).
 - `src/practice.ts`: perfil de velocidad, posición de la pelota, `practiceCorrelation`.
 - `src/summary.ts`: filas de la tabla final y la frase de la correlación de la práctica.

@@ -1,7 +1,14 @@
 // Pantalla final (SPEC §11): mensaje para el niño y, plegada, la sección del investigador
 // con el resumen, las miniaturas de las curvas y las descargas.
 import type { MountScreen } from '../main';
-import { canShareFiles, downloadFile, shareFiles } from '../data/download';
+import {
+  canShareFiles,
+  downloadFile,
+  SHARE_BUSY_MESSAGE,
+  shareErrorMessage,
+  shareableFiles,
+  shareFiles,
+} from '../data/download';
 import { buildAllFiles, fileBase, type OutputFile } from '../data/export';
 import { speedAt } from '../practice';
 import { formatTime } from '../players/scenes';
@@ -207,22 +214,32 @@ export const mountDone: MountScreen = (root, go) => {
     });
     box.append(b);
   }
-  if (canShareFiles(files)) {
+  const csvs = shareableFiles(files);
+  if (canShareFiles(csvs)) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'btn sea';
-    b.textContent = 'Compartir los 4 archivos';
+    b.textContent = 'Compartir los 3 CSV';
+    b.title = 'El JSON no se puede compartir desde el navegador: descárgalo con su botón.';
     b.addEventListener('click', async () => {
+      if (b.disabled) return;
+      b.disabled = true;
       try {
-        if (await shareFiles(files, fileBase(s))) {
+        const r = await shareFiles(csvs, fileBase(s));
+        if (r === 'compartido') {
           saved = true;
           disarm();
-          status.textContent = 'Archivos compartidos.';
+          status.textContent = 'CSV compartidos. El JSON se descarga con su botón.';
           status.className = 'status ok';
+        } else if (r === 'ocupado') {
+          status.textContent = SHARE_BUSY_MESSAGE;
+          status.className = 'status warn';
         }
-      } catch {
-        status.textContent = 'No se pudo compartir. Usa los botones de descarga.';
+      } catch (err) {
+        status.textContent = shareErrorMessage(err);
         status.className = 'status error';
+      } finally {
+        b.disabled = false;
       }
     });
     box.append(b);

@@ -1,6 +1,14 @@
 // Tabla de sesiones guardadas en el dispositivo (SPEC §9), dentro de la pantalla de configuración:
 // descarga de cada archivo, «Compartir», «Borrar» con dos toques y ZIP con todas las sesiones.
-import { canShareFiles, downloadBlob, downloadFile, shareFiles } from '../data/download';
+import {
+  canShareFiles,
+  downloadBlob,
+  downloadFile,
+  SHARE_BUSY_MESSAGE,
+  shareErrorMessage,
+  shareableFiles,
+  shareFiles,
+} from '../data/download';
 import { buildAllFiles, fileBase, type OutputFile } from '../data/export';
 import {
   buildZip,
@@ -45,11 +53,12 @@ export function mountSavedSessions(card: HTMLElement): () => void {
   const status = $('ss-status');
   let alive = true;
   let sessions: StoredSession[] = [];
-  // canShare depende del tipo de los archivos, no de su contenido: basta probar con archivos vacíos.
+  // canShare depende del tipo de los archivos, no de su contenido: basta probar con CSV vacíos.
+  // Solo se comparten los CSV (ver shareableFiles).
   const shareable = canShareFiles(
-    (['ventanas', 'hz10', 'toques'] as const)
-      .map((kind): OutputFile => ({ kind, name: `x_${kind}.csv`, mime: 'text/csv;charset=utf-8', content: '' }))
-      .concat({ kind: 'json', name: 'x.json', mime: 'application/json;charset=utf-8', content: '' }),
+    (['ventanas', 'hz10', 'toques'] as const).map(
+      (kind): OutputFile => ({ kind, name: `x_${kind}.csv`, mime: 'text/csv;charset=utf-8', content: '' }),
+    ),
   );
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
@@ -115,11 +124,17 @@ export function mountSavedSessions(card: HTMLElement): () => void {
       }
       if (shareable) {
         box.append(
-          smallButton('Compartir', 'sea', async () => {
+          smallButton('Compartir CSV', 'sea', async (b) => {
+            if (b.disabled) return;
+            b.disabled = true;
             try {
-              if (await shareFiles(buildAllFiles(s), fileBase(s))) setStatus('Archivos compartidos.', 'ok');
-            } catch {
-              setStatus('No se pudo compartir. Usa los botones de descarga.', 'error');
+              const r = await shareFiles(shareableFiles(buildAllFiles(s)), fileBase(s));
+              if (r === 'compartido') setStatus('CSV compartidos. El JSON se descarga con su botón.', 'ok');
+              else if (r === 'ocupado') setStatus(SHARE_BUSY_MESSAGE, 'error');
+            } catch (err) {
+              setStatus(shareErrorMessage(err), 'error');
+            } finally {
+              b.disabled = false;
             }
           }),
         );
