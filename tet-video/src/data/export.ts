@@ -2,7 +2,7 @@
 import { APP_VERSION, type DimensionRecord, type SessionData } from '../state';
 import { coverageOf, HZ, resample, round } from '../trace/trace';
 import { practiceCorrelation } from '../practice';
-import { videoToLsl, type Sync } from './events';
+import { syncJson, videoToLsl, type Sync } from './sync';
 
 /** UTF-8 con BOM en los CSV para que Excel muestre bien las tildes (el JSON va sin BOM). */
 const BOM = '﻿';
@@ -136,7 +136,8 @@ export function buildJson(s: SessionData): string {
     condicion: s.condicion,
     inicio: s.inicio,
     grabacion: s.grabacion,
-    sincronizacion: { video_s: s.sincronizacion.videoS, lsl_s: s.sincronizacion.lslS },
+    // video_s y lsl_s se conservan para los scripts existentes; el resto es de la v2 (SPEC §16.6).
+    sincronizacion: syncJson(s.sincronizacion),
     eventos: s.eventos.map((e) => ({ t: round(e.t, 3), label: e.label, icon: e.icon })),
     configuracion: {
       modo: s.modo,

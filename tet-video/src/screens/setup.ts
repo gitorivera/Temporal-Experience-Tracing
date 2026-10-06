@@ -2,6 +2,7 @@
 import type { MountScreen } from '../main';
 import { dimensionOrder, loadSavedConfig, RESOLUCION_MIN, roundSync, saveConfig, validateConfig } from '../config';
 import { parseEvents, parseNumber, toVideoEvents, type ParseResult, type Sync } from '../data/events';
+import { syncFromPoints } from '../data/sync';
 import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
 import { APP_VERSION, configPorDefecto, setPlan, type Config, type Dimension } from '../state';
@@ -318,10 +319,17 @@ export const mountSetup: MountScreen = (root, go) => {
   // ------------------------------------------------------------------------
   // Eventos
   // ------------------------------------------------------------------------
-  const currentSync = (): Sync => ({
-    videoS: Number.isFinite(cfg.syncVideoS) ? cfg.syncVideoS : 0,
-    lslS: events?.result.sync?.t ?? null,
-  });
+  /**
+   * Un solo destello, el del campo de configuración, emparejado con la primera fila sync.
+   * La detección de varios destellos (SPEC §16.4) llega en la fase 10.
+   */
+  const currentSync = (): Sync => {
+    const videoS = Number.isFinite(cfg.syncVideoS) ? cfg.syncVideoS : 0;
+    const first = events?.result.sync;
+    return first
+      ? syncFromPoints([{ etiqueta: first.label, videoS, lslS: first.t, origen: 'manual' }])
+      : { videoS, lslS: null };
+  };
 
   /** Mensaje del archivo leído, más cuántos eventos caen dentro del video con el destello actual. */
   function renderEventsStatus() {
@@ -337,6 +345,9 @@ export const mountSetup: MountScreen = (root, go) => {
         ? `fila de sincronización encontrada (${num(r.sync.t, 2)} s)`
         : 'sin fila de sincronización: los tiempos se toman como segundos desde el destello y no habrá tiempo LSL',
     );
+    if (r.syncs.length > 1) {
+      parts.push(`${r.syncs.length} filas de sincronización; por ahora se usa solo la primera (la detección de varios destellos llega en la fase 10)`);
+    }
     if (r.skipped > 0) parts.push(`${r.skipped} ${r.skipped === 1 ? 'fila descartada' : 'filas descartadas'} por no tener un tiempo numérico`);
     let text = parts.join(' · ') + '.';
     let kind: 'ok' | 'warn' = r.sync && r.skipped === 0 ? 'ok' : 'warn';

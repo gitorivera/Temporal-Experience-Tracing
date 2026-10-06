@@ -1,4 +1,8 @@
 // Lectura del CSV de eventos y sincronización con LSL (SPEC §8.1, §8.2).
+// La traducción video ↔ LSL está en sync.ts.
+import { lslToVideo, type Sync } from './sync';
+
+export { lslToVideo as eventToVideo, videoToLsl, type Sync, type SyncPoint } from './sync';
 
 /** Fila del CSV tal como viene (tiempo en el reloj del archivo, normalmente LSL). */
 export interface RawEvent {
@@ -22,8 +26,10 @@ export type ParseResult =
       ok: true;
       /** Eventos sin la fila de sincronización, ordenados por tiempo. */
       events: RawEvent[];
-      /** Primera fila cuya etiqueta empieza por «sync» o «sincron». */
+      /** Primera fila (por tiempo) cuya etiqueta empieza por «sync» o «sincron». */
       sync: RawEvent | null;
+      /** Todas las filas sync, ordenadas por tiempo (§16): una por destello. */
+      syncs: RawEvent[];
       /** Filas descartadas por no tener un tiempo numérico. */
       skipped: number;
       delimiter: Delimiter;
@@ -129,9 +135,9 @@ export function parseEvents(text: string): ParseResult {
   }
 
   parsed.sort((a, b) => a.t - b.t);
-  const sync = parsed.find((e) => SYNC_RE.test(e.label.trim())) ?? null;
+  const syncs = parsed.filter((e) => SYNC_RE.test(e.label.trim()));
   const events = parsed.filter((e) => !SYNC_RE.test(e.label.trim()));
-  return { ok: true, events, sync, skipped, delimiter, hasHeader };
+  return { ok: true, events, sync: syncs[0] ?? null, syncs, skipped, delimiter, hasHeader };
 }
 
 /** Ícono por la etiqueta cuando el archivo no trae uno (SPEC §8.1). */
@@ -145,30 +151,9 @@ export function iconFor(label: string): string {
   return '◆';
 }
 
-// ---------------------------------------------------------------------------
-// Sincronización (SPEC §8.2)
-// ---------------------------------------------------------------------------
-
-export interface Sync {
-  /** Segundo del destello en el video (S_video). */
-  videoS: number;
-  /** Tiempo LSL de la fila sync (S_lsl); null si el archivo no la tiene. */
-  lslS: number | null;
-}
-
-/** t_video = S_video + (t_evento − S_lsl); sin fila sync, t_video = S_video + t_evento. */
-export function eventToVideo(tEvento: number, sync: Sync): number {
-  return sync.videoS + (tEvento - (sync.lslS ?? 0));
-}
-
-/** t_lsl = S_lsl + (t_video − S_video); null sin fila sync. */
-export function videoToLsl(tVideo: number, sync: Sync): number | null {
-  return sync.lslS === null ? null : sync.lslS + (tVideo - sync.videoS);
-}
-
 /** Eventos en tiempo de video, con ícono, dentro de [0, duración]. */
 export function toVideoEvents(events: readonly RawEvent[], sync: Sync, duration: number): VideoEvent[] {
   return events
-    .map((e) => ({ t: eventToVideo(e.t, sync), label: e.label, icon: e.icon || iconFor(e.label) }))
+    .map((e) => ({ t: lslToVideo(e.t, sync), label: e.label, icon: e.icon || iconFor(e.label) }))
     .filter((e) => e.t >= 0 && e.t <= duration);
 }

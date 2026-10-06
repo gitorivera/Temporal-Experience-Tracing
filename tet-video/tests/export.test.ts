@@ -11,6 +11,7 @@ import {
   sanitizeId,
 } from '../src/data/export';
 import { parseEvents, toVideoEvents } from '../src/data/events';
+import { syncFromPoints } from '../src/data/sync';
 import { PRACTICE_DIMENSION, PRACTICE_DURATION, speedAt } from '../src/practice';
 import { configPorDefecto, type DimensionRecord, type SessionData } from '../src/state';
 import { Trace } from '../src/trace/trace';
@@ -147,6 +148,22 @@ describe('CSV a 10 Hz', () => {
     expect(Math.abs(Number(row[6]) - 1561.8)).toBeLessThan(0.05);
   });
 
+  it('con varios destellos, tiempo_lsl_s sigue los tramos (SPEC §16)', () => {
+    // Salto de 0,4 s en la transmisión entre sync_2 y sync_3.
+    const sync = syncFromPoints([
+      { etiqueta: 'sync_1', videoS: 2, lslS: 1000, origen: 'auto' },
+      { etiqueta: 'sync_2', videoS: 62, lslS: 1060, origen: 'auto' },
+      { etiqueta: 'sync_3', videoS: 112.4, lslS: 1110, origen: 'auto' },
+    ]);
+    const s = session({ sincronizacion: sync, dimensiones: [rec(record(120), 0)] });
+    const at = (t: string) => Number(rows(build10HzCsv(s)).find((x) => x[5] === t)![6]);
+    expect(at('62.000')).toBeCloseTo(1060, 3);
+    expect(at('112.400')).toBeCloseTo(1110, 3);
+    // A mitad del segundo tramo: 25,2 s de video equivalen a 25 s de LSL.
+    expect(at('87.200')).toBeCloseTo(1085, 3);
+    expect(JSON.parse(buildJson(s)).sincronizacion.modelo).toBe('tramos');
+  });
+
   it('deja tiempo_lsl_s vacío sin fila sync', () => {
     const s = session({ sincronizacion: { videoS: 0, lslS: null }, dimensiones: [rec(record(5), 0)] });
     expect(rows(build10HzCsv(s)).every((x) => x[6] === '')).toBe(true);
@@ -236,7 +253,16 @@ describe('JSON', () => {
       'eventos', 'configuracion', 'practica', 'dimensiones',
     ]);
     expect(j.version_app).toBe('1.0.0');
-    expect(j.sincronizacion).toEqual({ video_s: 12.4, lsl_s: 1532.4 });
+    // SPEC §16.6: se conservan video_s y lsl_s y se agrega el resto.
+    expect(j.sincronizacion).toEqual({
+      video_s: 12.4,
+      lsl_s: 1532.4,
+      modelo: 'un_punto',
+      puntos: [{ etiqueta: 'sync', video_s: 12.4, lsl_s: 1532.4, origen: 'manual' }],
+      ritmo_por_tramo: [],
+      dif_intervalo_max_s: null,
+      residuo_recta_max_ms: null,
+    });
     expect(j.eventos).toEqual([{ t: 15.1, label: 'inicio nivel 1', icon: '🚩' }]);
     expect(j.configuracion).toEqual({ modo: 'trazo', velocidad_reproduccion: 1, valor_inicial: 0.5, orden_aleatorio: true });
 

@@ -10,6 +10,7 @@ import {
   shareFiles,
 } from '../data/download';
 import { buildAllFiles, fileBase, type OutputFile } from '../data/export';
+import { pointsOf, syncModel, syncQuality, type Sync } from '../data/sync';
 import { speedAt } from '../practice';
 import { formatTime } from '../players/scenes';
 import { takeFinished, type DimensionRecord, type SessionData } from '../state';
@@ -25,6 +26,18 @@ const FILE_LABELS: Record<OutputFile['kind'], string> = {
 
 const num = (x: number, d: number) => x.toFixed(d).replace('.', ',');
 
+function syncText(sync: Sync): string {
+  const modelo = syncModel(sync);
+  if (modelo === 'sin_sync') return `destello en ${num(sync.videoS, 2)} s, sin fila sync (sin tiempo LSL)`;
+  if (modelo === 'un_punto') return `un destello: ${num(sync.videoS, 2)} s del video = ${num(sync.lslS!, 3)} s LSL`;
+  const p = pointsOf(sync);
+  const q = syncQuality(p);
+  return (
+    `${p.length} destellos, por tramos · diferencia de intervalo máx. ${num(q.difIntervaloMaxS ?? 0, 3)} s` +
+    ` · residuo de la recta ${num(q.residuoRectaMaxMs ?? 0, 0)} ms`
+  );
+}
+
 function metaLines(s: SessionData): [string, string][] {
   const sync = s.sincronizacion;
   return [
@@ -35,12 +48,7 @@ function metaLines(s: SessionData): [string, string][] {
     ['Orden', s.ordenAleatorio ? 'Aleatorio' : 'Fijo'],
     ['Inicio', new Date(s.inicio).toLocaleString('es-CO')],
     ['Grabación', s.grabacion ?? 'Grabación de ejemplo'],
-    [
-      'Sincronización',
-      sync.lslS === null
-        ? `destello en ${num(sync.videoS, 2)} s, sin fila sync (sin tiempo LSL)`
-        : `destello en ${num(sync.videoS, 2)} s = ${num(sync.lslS, 3)} s LSL`,
-    ],
+    ['Sincronización', syncText(sync)],
     ['Eventos en el video', String(s.eventos.length)],
     ['Resolución de exportación', `${num(s.resolucionS, s.resolucionS % 1 ? 1 : 0)} s`],
   ];
