@@ -424,6 +424,92 @@ button {
   -webkit-user-select: none;
 }
 
+/* Pantalla final (SPEC §11) */
+.done .thanks {
+  text-align: center;
+  padding: 48px 10px 36px;
+}
+.done .thanks .big {
+  font-size: clamp(2.4rem, 6vw, 4rem);
+}
+.done-panel > summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1.1rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.done-panel[open] > summary {
+  margin-bottom: 12px;
+}
+.done-panel h3 {
+  font-size: 1.15rem;
+  margin: 22px 0 10px;
+}
+.done-actions {
+  justify-content: center;
+}
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+}
+.meta dt {
+  font-weight: 700;
+  color: var(--muted);
+}
+.meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.tablewrap {
+  overflow-x: auto;
+}
+.done table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+}
+.done th,
+.done td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.done th {
+  color: var(--muted);
+  font-weight: 700;
+}
+.practice-note {
+  margin: 12px 0 0;
+}
+.minis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
+.minis figure {
+  margin: 0;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+}
+.minis figcaption {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+.minis canvas {
+  display: block;
+  width: 100%;
+  height: 110px;
+}
+
 /* Pantalla de trazado (SPEC §7.1) */
 .tracing {
   display: flex;

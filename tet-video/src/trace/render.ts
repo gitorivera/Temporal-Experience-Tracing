@@ -186,6 +186,71 @@ export function drawGraph(ctx: CanvasRenderingContext2D, w: number, h: number, s
   }
 }
 
+/**
+ * Miniatura de una curva para la pantalla final (SPEC §11). `reference` dibuja además una curva
+ * punteada (la velocidad real de la pelota en la práctica).
+ */
+export function drawMini(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  values: ArrayLike<number>,
+  duration: number,
+  p: Palette,
+  reference?: (t: number) => number,
+): void {
+  const pad = 6;
+  const x = (t: number) => xFromTime(t, duration, w, pad);
+  const y = (v: number) => yFromValue(v, h, pad);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.strokeStyle = p.line;
+  ctx.lineWidth = 1;
+  for (let k = 0; k <= 2; k++) {
+    const yy = Math.round(y(k / 2)) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, yy);
+    ctx.lineTo(w, yy);
+    ctx.stroke();
+  }
+
+  if (reference) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = p.sea;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const steps = Math.max(2, Math.round(w));
+    for (let k = 0; k <= steps; k++) {
+      const t = (k / steps) * duration;
+      if (k === 0) ctx.moveTo(x(t), y(reference(t)));
+      else ctx.lineTo(x(t), y(reference(t)));
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = p.trace;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  let open = false;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]!;
+    if (Number.isNaN(v)) {
+      open = false;
+      continue;
+    }
+    if (open) ctx.lineTo(x(i / HZ), y(v));
+    else {
+      ctx.moveTo(x(i / HZ), y(v));
+      open = true;
+    }
+  }
+  ctx.stroke();
+}
+
 export interface TimelineState {
   duration: number;
   eventos: readonly VideoEvent[];

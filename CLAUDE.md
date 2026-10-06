@@ -39,6 +39,12 @@ Decisiones de la fase 5 aceptadas sin objeción:
 - La última muestra de una pasada se toma en la duración del video, para que la cobertura llegue a 1,0.
 - La línea de tiempo se puede usar antes de la primera pasada y después de cada una; cada gesto es un salto.
 
+Decisiones de la fase 6 aceptadas por el investigador:
+
+- Frase de la correlación de la práctica: r ≥ 0,5 buena; 0,2 ≤ r < 0,5 parcial; r < 0,2 dudosa (`src/summary.ts`).
+- **No hay botón «Descargar todos»** por ahora (el investigador lo prefiere así): un botón por archivo y «Compartir» los 4 juntos.
+- La sección del investigador de la pantalla final empieza plegada.
+
 ## Comandos (dentro de `tet-video/`)
 
 ```

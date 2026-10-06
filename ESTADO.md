@@ -10,20 +10,37 @@
 | 2. Lógica de datos con pruebas | Revisada | `770f3ac` phase 2 builded |
 | 3. Reproductores (`VideoPlayer`, `VirtualPlayer`) | Revisada en navegador | `7ed4cdd` y `fa1ad7a` Video players working, phase 3 builded |
 | 4. Pantalla de configuración | Revisada | `68cae27` Phase 4 builded, configuration is ready |
-| 5. Pantalla de trazado | Revisada | Phase 5 builded, raw dimensions adquired |
-| 6. Pantalla final y exportaciones | **En curso** | — |
-| 7. IndexedDB y sesiones guardadas | Sin empezar | — |
+| 5. Pantalla de trazado | Revisada | `260975d` Phase 5 builded, raw dimensions adquired |
+| 6. Pantalla final y exportaciones | Revisada | traces ready, download buttons ready, no multiple downloads enabled |
+| 7. IndexedDB y sesiones guardadas | **En curso** | — |
 | 8. Pulido para tablet | Sin empezar | — |
 
-Pruebas: 164 de 164 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
+Pruebas: 169 de 169 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
 
-Las decisiones aceptadas de las fases 2 y 4 están en CLAUDE.md.
+Las decisiones aceptadas de las fases 2, 4 y 5 están en CLAUDE.md.
 
 ## Dónde quedamos
 
-**Fase 5 revisada (2026-10-05); se empieza la fase 6.** Se probó de punta a punta en Brave sin interfaz (por CDP, 1280×800), en los dos modos, con la práctica y una dimensión sobre la grabación de ejemplo a 2×. Con 2 minutos salieron 1201 muestras con cobertura 100 %, y la consola no mostró errores. Falta probarla con el dedo en la tablet y con un video real.
+**Fase 6 revisada (2026-10-05); se empieza la fase 7.** El investigador no vio la frase de la correlación porque esa sesión no tuvo práctica; desde entonces, la pantalla final lo dice explícitamente. Se recorrió completa en Brave sin interfaz: práctica y una dimensión de 2 minutos sobre la grabación de ejemplo, panel del investigador y descarga de los 4 archivos. Revisión de los archivos descargados: los 3 CSV llevan BOM y el JSON no. `_10hz.csv` tiene 1201 filas de la dimensión y 401 de la práctica, `_ventanas.csv` 120 filas, y Python lee el JSON sin errores.
 
-Qué revisar:
+Qué revisar en la fase 6:
+
+1. «¡Terminaste! Gracias por jugar.» en grande. La sección «Para el investigador» está **plegada** para que el niño no la vea.
+2. Al desplegarla: aviso si se usó la grabación de ejemplo; datos de la sesión; tabla por dimensión (orden, nombre, cobertura, tiempo de respuesta, pasadas, toques, saltos); correlación de la práctica con su frase; miniaturas de cada curva, con la velocidad real punteada en la práctica.
+3. Botones de descarga de los 4 archivos y, si el navegador lo permite (Android), «Compartir los 4 archivos».
+4. «Nueva sesión» sin haber descargado nada pide un segundo toque.
+5. Abrir los CSV en Excel: las tildes se ven bien.
+
+## Decisiones de la fase 6 (aceptadas; resumidas en CLAUDE.md)
+
+- **Umbrales de la frase de la práctica** (orientativos, en `src/summary.ts`): r ≥ 0,5 «sigue bien la velocidad»; 0,2 ≤ r < 0,5 «solo en parte, conviene revisar»; r < 0,2 «es posible que no haya entendido la tarea».
+- La sección del investigador empieza plegada.
+- «Compartir» envía los 4 archivos juntos. No hay un botón «Descargar todos»: Chrome suele bloquear o pedir permiso para varias descargas seguidas. El ZIP de todas las sesiones es de la fase 7.
+- Hasta la fase 7 la sesión no queda guardada en el dispositivo: por eso «Nueva sesión» pide confirmación si no se descargó ni compartió nada.
+
+## Revisión de la fase 5 (hecha)
+
+Lo que se revisó:
 
 1. Tarjeta de introducción con la pregunta, la instrucción y «¡Vamos!».
 2. En espera: video en el primer cuadro, punto amarillo en (0, 0,5), línea de tiempo con íconos que mueve el video al tocarla o arrastrarla.
@@ -55,14 +72,14 @@ Qué revisar:
 - `src/config.ts`: recordar la configuración (`loadSavedConfig`, `saveConfig`, `sanitizeConfig`), `validateConfig` y el orden de dimensiones (`dimensionOrder`, `shuffled`). Sin DOM, con pruebas.
 - `src/state.ts`: tipos `Config`, `SessionData`, `DimensionRecord`, `RawPoint`, la configuración por defecto, `SessionPlan` (`setPlan`/`takePlan`: de la configuración al trazado) y `setFinished`/`takeFinished` (del trazado a la pantalla final).
 - `src/players/`: la interfaz `Player`, `VideoPlayer` (con `loadVideo` y `resolveDuration`), `VirtualPlayer` y `scenes.ts` (práctica, grabación de ejemplo, `DEMO_EVENTS`).
-- `src/screens/setup.ts`: formulario de configuración. `tracing.ts`: pantalla del niño completa. `done.ts`: marcador con un resumen provisional.
+- `src/trace/render.ts` incluye también `drawMini`, las miniaturas de la pantalla final.
+- `src/summary.ts`: filas de la tabla final (`summaryRows`) y la frase de la correlación de la práctica (`interpretCorrelation`). Sin DOM, con pruebas.
+- `src/data/download.ts`: `downloadFile` (Blob y enlace `download`), `canShareFiles` y `shareFiles` (navigator.share).
+- `src/screens/setup.ts`: formulario de configuración. `tracing.ts`: pantalla del niño. `done.ts`: pantalla final con el resumen y las descargas; recibe la sesión con `takeFinished()`.
 - `tests/`: pruebas de cada módulo.
-
-## Para la fase 6
-
-- `mountDone` recibe la sesión con `takeFinished()`: un `SessionData` completo, listo para `buildAllFiles()`.
-- El resumen provisional de `done.ts` se reemplaza por la pantalla del SPEC §11.
 
 ## Para la fase 7
 
 - En `finishItem()` de `tracing.ts` está marcado el punto donde se guarda la sesión en IndexedDB al terminar cada dimensión.
+- La tabla de sesiones guardadas puede reutilizar `buildAllFiles`, `downloadFile` y `shareFiles`.
+- Cuando las sesiones se guarden solas, quitar la confirmación de «Nueva sesión» en `done.ts` (o dejarla solo si falló el guardado).
