@@ -25,6 +25,20 @@ Decisiones de la fase 2 aceptadas sin objeción:
 - En el nombre de archivo, al código del participante se le quitan las tildes y lo no alfanumérico pasa a `_` (`Niño 3` → `Nino_3`). Dentro de los CSV se guarda el código original.
 - Los CSV usan fin de línea CRLF; tiempos con 3 decimales y valores con 4.
 
+Decisiones de la fase 4 aceptadas por el investigador:
+
+- La configuración (salvo el código del participante) se recuerda en `localStorage` y se guarda con cada cambio. Los datos de sesión siguen en IndexedDB.
+- Una dimensión a medio llenar impide comenzar; las filas vacías se ignoran; no se admiten dos dimensiones con el mismo nombre.
+- Sin video se usa la grabación de ejemplo con sus propios eventos (`DEMO_EVENTS`) y sin sincronización; un CSV cargado no se usa y la pantalla lo avisa.
+- Si el destello queda después del final del video se avisa, pero no se impide comenzar.
+
+Decisiones de la fase 5 aceptadas sin objeción:
+
+- «Repetir» borra la línea, el trazo crudo y el contador `toques` de la pasada anterior; `pasadas` y `saltos_video` se acumulan en toda la dimensión.
+- El tiempo de respuesta va de «¡Vamos!» a «Listo». La práctica usa la velocidad configurada.
+- La última muestra de una pasada se toma en la duración del video, para que la cobertura llegue a 1,0.
+- La línea de tiempo se puede usar antes de la primera pasada y después de cada una; cada gesto es un salto.
+
 ## Comandos (dentro de `tet-video/`)
 
 ```

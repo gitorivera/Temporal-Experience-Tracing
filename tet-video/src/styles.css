@@ -410,14 +410,6 @@ button {
   color: var(--danger);
   flex: 1 1 300px;
 }
-.plan-summary {
-  margin: 0;
-  padding: 16px 20px 16px 36px;
-  max-width: 900px;
-  background: var(--panel);
-  border-radius: var(--radius-m);
-  font-size: 1rem;
-}
 
 /* ==========================================================================
    Pantalla del niño: sin desplazamiento ni zoom.
@@ -430,6 +422,201 @@ button {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Pantalla de trazado (SPEC §7.1) */
+.tracing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+}
+.tr-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tr-q {
+  flex: 1;
+  font-size: clamp(1.4rem, 3.4vw, 2.4rem);
+}
+.pill {
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  border: 2px solid var(--line);
+  white-space: nowrap;
+}
+.pill.practice {
+  background: var(--sun);
+  color: var(--sun-ink);
+  border-color: var(--sun);
+}
+/* Video 16:9, como máximo el 38 % del alto. */
+.tr-stage {
+  flex: 0 0 auto;
+  height: 38vh;
+  height: 38dvh;
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+}
+.tr-stage video,
+.tr-stage canvas {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: var(--video-bg);
+  border-radius: var(--radius-m);
+}
+.tr-track {
+  flex: 1 1 auto;
+  min-height: 180px;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-rows: 58px minmax(0, 1fr);
+  gap: 6px 10px;
+}
+.tracing.slider-mode .tr-track {
+  grid-template-columns: 76px minmax(0, 1fr) 96px;
+}
+/* La línea de tiempo y la gráfica comparten columna: mismo ancho y mismo origen horizontal.
+   Sin bordes en los canvas (el contorno es un outline, que no cambia el tamaño). */
+.tr-timeline {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.tr-graph {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  background: var(--panel);
+  border-radius: var(--radius-m);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+.tr-ylab {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  color: var(--muted);
+  overflow: hidden;
+}
+.tr-dots {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  min-height: 0;
+}
+.tr-dots .dot {
+  display: block;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--trace);
+}
+.tr-dots .dot:nth-child(2) {
+  opacity: 0.8;
+}
+.tr-dots .dot:nth-child(3) {
+  opacity: 0.65;
+}
+.tr-dots .dot:nth-child(4) {
+  opacity: 0.5;
+}
+.tr-slider {
+  grid-column: 3;
+  grid-row: 2;
+  position: relative;
+  border-radius: 48px;
+  background: linear-gradient(to top, var(--panel), var(--trace));
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+  touch-action: none;
+}
+.tr-thumb {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  margin-left: calc(var(--thumb-size) / -2);
+  border-radius: 50%;
+  background: var(--sun);
+  border: 5px solid var(--panel);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+.tr-slider.inactive .tr-thumb {
+  opacity: 0.55;
+}
+.tr-bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tr-msg {
+  flex: 1;
+  text-align: right;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--warn);
+}
+.tr-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--scrim);
+}
+.tr-intro-box {
+  width: 100%;
+  max-width: 700px;
+  padding: 32px 30px;
+  text-align: center;
+  background: var(--panel);
+  border: 3px solid var(--sun);
+  border-radius: var(--radius-l);
+}
+.tr-intro-q {
+  font-size: clamp(1.8rem, 4.2vw, 2.8rem);
+  margin-bottom: 14px;
+}
+.tr-intro-p {
+  font-size: 1.25rem;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+.tr-intro .btn {
+  font-size: 1.35rem;
+  min-height: 64px;
+  padding: 14px 44px;
 }
 
 @media (prefers-reduced-motion: reduce) {

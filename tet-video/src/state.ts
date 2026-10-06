@@ -102,6 +102,19 @@ export function takePlan(): SessionPlan | null {
   return p;
 }
 
+let finishedSession: SessionData | null = null;
+
+/** Entrega la sesión terminada a la pantalla final. */
+export function setFinished(s: SessionData | null): void {
+  finishedSession = s;
+}
+
+export function takeFinished(): SessionData | null {
+  const s = finishedSession;
+  finishedSession = null;
+  return s;
+}
+
 export const APP_VERSION: string = __APP_VERSION__;
 
 export const DIMENSIONES_POR_DEFECTO: readonly Dimension[] = [
