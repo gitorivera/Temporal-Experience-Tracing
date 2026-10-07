@@ -87,6 +87,8 @@ La app TET asigna un ícono a cada evento según su etiqueta (SPEC §8.1). Con e
 
 Se puede agregar información después del nombre (`acierto objetivo 3`), siempre que la primera palabra sea la del evento.
 
+**Qué ve el niño** (decisión del investigador, 2026-10-07): para no recargar la línea de tiempo, la pantalla de trazado muestra solo los **combos de 3 aciertos**, marcados en el tercero (`acierto objetivo 3`), los **premios** y los **inicios** de partida y de nivel. No muestra los errores, el fin de partida ni los demás aciertos. Por eso el juego debe conservar el número de objetivo en la etiqueta del acierto. Si ningún acierto lo trae, se muestran todos los aciertos. Los archivos de salida de TET guardan todos los eventos.
+
 ## 6. Grabación del video
 
 ### 6.1 Realidad mixta (Quest → app Meta Horizon en el celular)

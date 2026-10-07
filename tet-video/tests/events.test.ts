@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  childEvents,
   detectDelimiter,
   eventToVideo,
   iconFor,
@@ -206,5 +207,44 @@ describe('sincronización (SPEC §8.2)', () => {
       10,
     );
     expect(ev).toHaveLength(2);
+  });
+});
+
+describe('eventos que ve el niño', () => {
+  const ev = (label: string, t = 0) => ({ t, label, icon: iconFor(label) });
+  // Secuencia real de la partida de prueba, con el tablero que se agotó por tiempo (1, 2 y otra vez 1).
+  const partida = [
+    ev('inicio partida', 0),
+    ev('inicio nivel 1', 0.01),
+    ev('acierto objetivo 1', 4.9),
+    ev('acierto objetivo 2', 6.2),
+    ev('acierto objetivo 3', 6.6),
+    ev('premio puntos 10', 6.6),
+    ev('error objetivo 2', 14),
+    ev('inicio nivel 5', 116),
+    ev('acierto objetivo 1', 123),
+    ev('acierto objetivo 2', 127.5),
+    ev('acierto objetivo 1', 129.8),
+    ev('fin partida', 144),
+  ];
+
+  it('deja los combos (solo el tercer acierto), los premios y los inicios', () => {
+    expect(childEvents(partida).map((e) => `${e.label}@${e.t}`)).toEqual([
+      'inicio partida@0',
+      'inicio nivel 1@0.01',
+      'acierto objetivo 3@6.6',
+      'premio puntos 10@6.6',
+      'inicio nivel 5@116',
+    ]);
+  });
+
+  it('sin número de objetivo (otro juego) se ven todos los aciertos', () => {
+    expect(childEvents([ev('acierto', 1), ev('error', 2), ev('acierto', 3)]).map((e) => e.t)).toEqual([1, 3]);
+  });
+
+  it('no cambia la lista recibida', () => {
+    const copia = partida.map((e) => ({ ...e }));
+    childEvents(partida);
+    expect(partida).toEqual(copia);
   });
 });

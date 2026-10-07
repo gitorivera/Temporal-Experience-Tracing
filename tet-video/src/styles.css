@@ -360,6 +360,8 @@ button {
 
 /* Dimensiones */
 .dim-row {
+  /* Un fieldset no se encoge por debajo de su contenido (min-width: min-content) y se salía de la tarjeta. */
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   padding: 10px 14px 12px;
@@ -373,12 +375,22 @@ button {
 }
 .dim-fields {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr 1fr;
+  /* minmax(0, …): sin él, el ancho propio de cada input impide que las columnas se encojan. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
+}
+.dim-fields input {
+  width: 100%;
+  min-width: 0;
 }
 @media (max-width: 760px) {
   .dim-fields {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  /* Nombre y pregunta a todo el ancho; las dos etiquetas, lado a lado. */
+  .dim-fields .dim-nombre {
+    grid-column: 1 / -1;
+    order: -2;
   }
   .dim-fields .dim-pregunta {
     grid-column: 1 / -1;

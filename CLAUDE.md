@@ -73,6 +73,11 @@ Decisiones de la ventana de trazado aceptadas por el investigador:
 - Si falta el destello de la primera o la última fila sync, los extremos salen de la sincronización con los demás.
 - Los eventos se exportan en tiempo del video (todos los del video); la pantalla del niño muestra solo los de la ventana.
 
+Decisiones del investigador sobre los eventos que ve el niño (2026-10-07):
+
+- Con un video real, la línea de tiempo del niño muestra solo los combos de 3 aciertos (marcados en «acierto objetivo 3»), los premios y los inicios de partida y de nivel (`childEvents` en `src/data/events.ts`). No muestra los errores, el fin de partida ni los demás aciertos. Si ningún acierto trae el número de objetivo, se muestran todos los aciertos. La grabación de ejemplo no se filtra.
+- El filtro es solo visual: el JSON guarda todos los eventos.
+
 ## Comandos (dentro de `tet-video/`)
 
 ```

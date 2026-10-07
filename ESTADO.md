@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-07.
+Última actualización: 2026-10-07 (cierre del día).
 
 ## Fases (SPEC §12)
 
@@ -16,9 +16,10 @@
 | 8. Pulido para tablet | Construida; falta la prueba en la tablet real | Phase 8 ready, app created |
 | 9. Sincronización por tramos (lógica y script XDF) | Revisada | `9ec5693` Phase 9 builded, piecewise LSL sync and XDF script tested with a real RM recording |
 | 10. Detección de destellos y tabla de revisión | Revisada (la detección funcionó bien con la grabación real) | `110ec08` Phase 10 built: automatic sync flash detection works on a real RM recording |
-| 10b. Ventana de trazado (recorte virtual, SPEC §16.8) | Revisada (decisiones aceptadas) | Video length adjusted to avoid off game experience tracing |
+| 10b. Ventana de trazado (recorte virtual, SPEC §16.8) | Revisada (decisiones aceptadas) | `4b5964b` Video length adjusted to avoid off game experience tracing |
+| 10c. Eventos que ve el niño y arreglo de las filas de dimensiones | Revisada (todo funcionó bien) | Child timeline shows only hit combos, prizes and level starts; dimension rows fit the card |
 
-Pruebas: 244 de 244 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
+Pruebas: 247 de 247 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md. Las de la fase 10 también.
 
@@ -26,12 +27,33 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 ## Dónde quedamos (para empezar la próxima sesión)
 
-### Para retomar (2026-10-07, tarde)
+### Para retomar (2026-10-08)
 
-0. **Ventana de trazado revisada y con commit** «Video length adjusted to avoid off game experience tracing»; el investigador aceptó las decisiones.
-1. **Fase 10 revisada y con commit** `110ec08` (2026-10-07): el investigador confirmó que la detección de destellos funciona bien.
-2. Para revisarla: `npm run dev`, cargar `test_files/RM.mp4` y el CSV hecho con `python scripts/xdf_a_eventos.py ../test_files/sub-P001_ses-S001_task-Default_run-001_beh.xdf -o eventos.csv`. Debe salir «Se encontraron los 4 destellos» con V = 7,127; 67,143; 127,142 y 151,067 s.
-3. Después: fase 11 (más grabaciones reales, partidas de 5 min y con el casco EEG; ajuste de umbrales) y la prueba en la tablet Android (ver «Fase 8: lo que falta»), que ahora incluye la detección de destellos.
+**Estado al cierre del 2026-10-07:** todo lo construido está revisado por el investigador y tiene commit (el último: «Child timeline shows only hit combos, prizes and level starts; dimension rows fit the card»). No hay cambios pendientes de revisión. Hoy se hicieron: la fase 9 (sincronización por tramos y script XDF → CSV), la prueba con la grabación real de RM, la fase 10 (detección de destellos y tabla de revisión), la ventana de trazado (recorte virtual), el filtro de eventos que ve el niño y el arreglo de las filas de dimensiones.
+
+**Para probar rápido en este computador:** dentro de `tet-video/`, `npm run dev` y cargar `../test_files/RM.mp4` con el CSV que genera `python scripts/xdf_a_eventos.py ../test_files/sub-P001_ses-S001_task-Default_run-001_beh.xdf -o eventos.csv`. Debe decir «Se encontraron los 4 destellos» (V = 7,127; 67,143; 127,142 y 151,067 s), «de 7,13 s a 151,03 s del video» y «El niño verá 60 en la línea de tiempo». Ojo: `npm run dev` ya incluye `--host`; al detener el servidor desde Claude Code, cerrar también el proceso de Vite que queda escuchando (pasó el 2026-10-07 con los puertos 5173 y 5174).
+
+**Etapas que faltan** (en el orden sugerido):
+
+1. **Publicar la versión actual en GitHub Pages.** La publicada en https://gitorivera.github.io/tet-app/ es la del commit `67840db` (fase 8): no tiene la sincronización por tramos, la detección de destellos, la ventana ni el filtro de eventos. Se publica con `bash scripts/deploy-pages.sh` dentro de `tet-video/` (exige no tener cambios sin commit). Es lo primero, porque la prueba en la tablet se hace desde ahí.
+2. **Fase 8, prueba en la tablet Android** (ver «Fase 8: lo que falta»): instalar como app, sin conexión, el tacto en ambos modos, la rotación, un MP4 y un WebM, un video muy corto y uno muy largo, y abrir los CSV. Ahora también: que la detección de destellos a 4× sea rápida en la tablet (en el computador, 50 s para 167 s de video), que el visor cuadro a cuadro y el marcado del recuadro funcionen con el dedo, y que la ventana de trazado arranque y termine bien.
+3. **Fase 11, más grabaciones reales de la Quest:** una partida completa de unos 5 minutos (6 o 7 destellos) para confirmar la detección, ver si aparece deriva o saltos en grabaciones más largas y ajustar los umbrales si hace falta (blanco > 220, racha > 80 %, 0,1 a 0,8 s, tolerancia del emparejamiento). Conviene probar también con poca luz y con escenas muy blancas.
+4. **Con el casco EEG operativo:** grabar en LabRecorder el EEG y `JuegoEventos` juntos y comprobar con `pyxdf` que quedan en el mismo reloj (GAME-SPECS §8, punto 1). Hoy solo se probó el stream de marcadores.
+5. **Lista de comprobación antes del piloto** (GAME-SPECS §8): con los puntos 2 a 5 ya vistos en la prueba de RM y el 6 cubierto por la fase 10, quedan el 1 (EEG) y repetirla completa con el montaje final.
+6. **Versión de tablet del juego** (condición «Tablet»): aún no existe. GAME-SPECS §6.2 tiene las recomendaciones (grabación de pantalla, el mismo destello arriba al centro). Cuando exista, probar la detección con esa grabación.
+7. **Piloto con niños.**
+
+Fuera del diseño actual (SPEC §15, por ahora): transmitir el trazo por LSL en tiempo real, grabar el video dentro de la app, y cuentas o sincronización con un servidor. El análisis posterior (buscar en el EEG los patrones que correspondan a las trazas) no está especificado: los archivos de TET ya traen `tiempo_lsl_s` para hacerlo.
+
+### Eventos que ve el niño y filas de dimensiones (2026-10-07): revisado
+
+**Eventos.** Pedido del investigador: la línea de tiempo se veía muy cargada (139 eventos en 2,4 min). Decidió mostrar al niño solo los combos de 3 aciertos, marcados en el tercero (`acierto objetivo 3`), los premios y los inicios de partida y de nivel. Se descartó la regla «tres aciertos seguidos» porque en la grabación de prueba un tablero se agotó por tiempo (1, 2 y otra vez 1; el `board_timeout` solo va en `ColorQuestMarkers`) y habría dado un combo falso. Es solo visual: el JSON guarda todos los eventos.
+- `childEvents` en `src/data/events.ts` (con pruebas). Se aplica en `tracing.ts` solo con un video real (la grabación de ejemplo no se filtra). La configuración dice cuántos verá el niño: «El niño verá 60 en la línea de tiempo…».
+- En el navegador, con `RM.mp4`: 60 de 139 (27 combos, 27 premios y 6 inicios), sin errores en la consola.
+- Observación: en este juego cada premio cae en el mismo instante que su combo, así que el 🎁 tapa la ⭐ y en la práctica solo se ve el regalo (una marca por combo).
+- GAME-SPECS §5 dice ahora qué ve el niño y pide conservar el número de objetivo en la etiqueta del acierto.
+
+**Filas de dimensiones.** En la configuración, las filas de cada dimensión se salían del borde derecho de la tarjeta. Causa: un `<fieldset>` no se encoge por debajo de su contenido (`min-width: min-content`), y el ancho propio de cada `<input>` impedía que las columnas `1fr` se encogieran (por eso «Pregunta», que debe ser el doble de ancha, salía igual que las demás). Arreglo en `styles.css`: `min-width: 0` en `.dim-row`, columnas `minmax(0, …)` e inputs al 100 %. En el ancho angosto (≤ 760 px), nombre y pregunta van a todo el ancho y las dos etiquetas lado a lado (antes «Etiqueta superior» quedaba sola). Comprobado en modo oscuro a 1000 y 700 px: ninguna fila sobresale.
 
 ### Ventana de trazado (2026-10-07): revisada
 

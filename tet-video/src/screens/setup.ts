@@ -1,9 +1,9 @@
 // Pantalla del investigador (SPEC §6): formulario de la sesión, lectura del video y de los eventos.
 import type { MountScreen } from '../main';
 import { dimensionOrder, loadSavedConfig, RESOLUCION_MIN, roundSync, saveConfig, validateConfig } from '../config';
-import { parseEvents, parseNumber, toVideoEvents, type ParseResult, type Sync } from '../data/events';
+import { childEvents, parseEvents, parseNumber, toVideoEvents, type ParseResult, type Sync } from '../data/events';
 import { syncFromPoints } from '../data/sync';
-import { traceWindow, type Ventana } from '../data/window';
+import { eventsInWindow, traceWindow, type Ventana } from '../data/window';
 import { WindowedPlayer } from '../players/windowedPlayer';
 import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
@@ -416,10 +416,14 @@ export const mountSetup: MountScreen = (root, go) => {
     let kind: 'ok' | 'warn' = r.sync && r.skipped === 0 ? 'ok' : 'warn';
 
     if (video) {
-      const inside = toVideoEvents(r.events, currentSync(), video.player.duration).length;
+      const enVideo = toVideoEvents(r.events, currentSync(), video.player.duration);
+      const inside = enVideo.length;
       const outside = r.events.length - inside;
+      const ventana = currentWindow();
+      const visibles = ventana ? eventsInWindow(childEvents(enVideo), ventana).length : 0;
       text += ` Con ${flashes.points() ? 'los destellos detectados' : `el destello en ${num(currentSync().videoS, 2)} s`}, ${inside} de ${r.events.length} caen dentro del video`;
       text += outside > 0 ? ` (${outside} fuera; se descartan).` : '.';
+      text += ` El niño verá ${visibles} en la línea de tiempo: los combos de 3 aciertos, los premios y los inicios (el JSON guarda todos).`;
       if (inside === 0 && r.events.length > 0) kind = 'warn';
     } else {
       text += ' Sin video, la grabación de ejemplo usa sus propios eventos y este archivo no se usará.';

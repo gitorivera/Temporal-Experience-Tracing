@@ -2,7 +2,7 @@
 // para la práctica y cada dimensión. El tiempo de referencia es siempre el del reproductor.
 import type { MountScreen } from '../main';
 import { isoLocal } from '../data/export';
-import type { VideoEvent } from '../data/events';
+import { childEvents, type VideoEvent } from '../data/events';
 import { eventsInWindow } from '../data/window';
 import type { Player } from '../players/player';
 import { createPracticePlayer } from '../players/scenes';
@@ -63,7 +63,10 @@ export const mountTracing: MountScreen = (root, go) => {
 
   const practicePlayer = config.practica ? createPracticePlayer() : null;
   // El reproductor ya está recortado a la ventana (SPEC §16.8): los eventos se dibujan en su tiempo.
-  const ventanaEventos = eventsInWindow(plan.eventos, plan.ventana);
+  // Con un video real, el niño ve solo los combos, los premios y los inicios (childEvents);
+  // la grabación de ejemplo trae sus propios eventos.
+  const visibles = plan.grabacion ? childEvents(plan.eventos) : plan.eventos;
+  const ventanaEventos = eventsInWindow(visibles, plan.ventana);
   const items: Item[] = [
     ...(practicePlayer ? [{ dimension: { ...PRACTICE_DIMENSION }, practica: true, player: practicePlayer, eventos: [] }] : []),
     ...plan.orden.map((dimension) => ({ dimension, practica: false, player: plan.player, eventos: ventanaEventos })),

@@ -151,6 +151,32 @@ export function iconFor(label: string): string {
   return '◆';
 }
 
+/** El acierto con este objetivo completa el tablero: es el combo de 3 aciertos. */
+export const OBJETIVO_COMBO = 3;
+
+/** Número de objetivo de la etiqueta («acierto objetivo 3» → 3); null si no lo trae. */
+function objetivoDe(label: string): number | null {
+  const m = /\bobjetivo\s*(\d+)/.exec(normalize(label));
+  return m ? Number(m[1]) : null;
+}
+
+const esAcierto = (label: string) => /^aciertos?\b/.test(normalize(label));
+
+/**
+ * Eventos que ve el niño en la pantalla de trazado (decisión del investigador, 2026-10-07): los combos
+ * de 3 aciertos, marcados solo en el tercero («acierto objetivo 3»), los premios y los inicios de
+ * partida y de nivel. No se muestran los errores, el fin de partida ni los demás aciertos.
+ * Si ningún acierto trae el número de objetivo (otro juego), se muestran todos los aciertos.
+ * Es solo visual: los archivos de salida guardan todos los eventos.
+ */
+export function childEvents(eventos: readonly VideoEvent[]): VideoEvent[] {
+  const conObjetivo = eventos.some((e) => esAcierto(e.label) && objetivoDe(e.label) !== null);
+  return eventos.filter((e) => {
+    if (esAcierto(e.label)) return !conObjetivo || objetivoDe(e.label) === OBJETIVO_COMBO;
+    return /^(premios?|inicio)\b/.test(normalize(e.label));
+  });
+}
+
 /** Eventos en tiempo de video, con ícono, dentro de [0, duración]. */
 export function toVideoEvents(events: readonly RawEvent[], sync: Sync, duration: number): VideoEvent[] {
   return events
