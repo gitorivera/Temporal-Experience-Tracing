@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-06.
+Última actualización: 2026-10-07.
 
 ## Fases (SPEC §12)
 
@@ -14,14 +14,56 @@
 | 6. Pantalla final y exportaciones | Revisada | `409ace7` traces ready, download buttons ready, no multiple downloads enabled |
 | 7. IndexedDB y sesiones guardadas | Revisada | `5e4a962` Phase 7 ready, persistent saving and config table; arreglo de «Compartir»: Sharing files enabled |
 | 8. Pulido para tablet | Construida; falta la prueba en la tablet real | Phase 8 ready, app created |
+| 9. Sincronización por tramos (lógica y script XDF) | Construida; espera revisión | `9edcb8f` first changes for tet-app LSL syncronization (más los ajustes del 2026-10-07, sin commit) |
 
-Pruebas: 185 de 185 pasan (`npm test`). El chequeo de tipos y el build no dan errores.
+Pruebas: 206 de 206 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md.
 
 Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`). Para retomar: dentro de `tet-video/`, `npm run dev` (el servidor no queda corriendo entre sesiones).
 
 ## Dónde quedamos (para empezar la próxima sesión)
+
+### Para retomar (2026-10-07)
+
+1. **Esperando la revisión y el mensaje de commit del investigador** para la fase 9 y los cambios de hoy. Nada de lo de hoy tiene commit.
+2. **Siguiente: fase 10**, con el método de detección nuevo del SPEC §16.4 (recuadro fijo del destello; ver «Decisiones del 2026-10-07»). Probarla con `test_files/RM.mp4`: debe dar V = 7,127; 67,143; 127,142 y 151,067 s (±1 cuadro).
+3. Sigue pendiente la prueba en la tablet Android (ver «Fase 8: lo que falta»).
+4. Más adelante: grabaciones de partidas completas (unos 5 min) y con el casco EEG, para la fase 11.
+
+### Decisiones del 2026-10-07 (investigador)
+
+- **Método de detección cambiado** (SPEC §16.4 reescrito; también la línea de la fase 10 en §16.7). En vez de la cuadrícula de 8×6: (1) ubicar el recuadro del destello, automáticamente (píxeles que pasan a blanco casi puro durante 0,1 a 0,8 s, zona compacta y cuadrada cuyos pulsos coinciden con los `sync`) o tocándolo en el visor; (2) medir en cada cuadro la fracción de blanco dentro del recuadro (racha > 0,8 durante 0,1 a 0,8 s); (3) refinar cuadro por cuadro. Tiempos por `mediaTime`, nunca por número de cuadro ÷ fps, porque el video tiene duración de cuadro variable. El recuadro se recuerda en `localStorage`, en coordenadas relativas.
+- **Stream del XDF: `JuegoEventos`.** `xdf_a_eventos.py` lo usa por omisión e ignora los demás, como `ColorQuestMarkers`. `--stream` permite elegir otro. GAME-SPECS §7 actualizado. 11 pruebas del script pasan.
+- **`test_files/` no se sube:** agregada al `.gitignore` nuevo de la raíz. Es solo para nuestras pruebas: `RM.mp4` y `sub-P001_ses-S001_task-Default_run-001_beh.xdf`.
+
+### Herramientas usadas en la prueba (no son parte del proyecto)
+
+El análisis del video se hizo con OpenCV (`opencv-python-headless`) en un entorno virtual temporal, fuera del repositorio. Si hace falta repetirlo, se recrea con `python -m venv venv` y `venv/Scripts/python -m pip install opencv-python-headless numpy`. La idea es leer cada cuadro con `cv2.VideoCapture`, tomar su tiempo con `CAP_PROP_POS_MSEC` y medir el blanco en el recuadro (399, 58, 70×70). La calidad se calculó con `src/data/sync.ts` corriendo en Node 24, que ejecuta TypeScript sin compilar.
+
+### Prueba con una grabación real de RM (2026-10-07, sin EEG)
+
+Archivos en `test_files/` (sin commit): `RM.mp4` (Meta Horizon, 832×464, 167 s, unos 30 fps con duración de cuadro variable de 10 a 45 ms) y el XDF de LabRecorder con dos streams de marcadores, `JuegoEventos` (143 filas, 4 `sync`) y `ColorQuestMarkers` (detallado). La partida dura 144 s: `sync_1` al iniciar, `sync_2` y `sync_3` cada 60 s y `sync_4` al final.
+
+- **Destellos en el video:** cuadrado blanco de 70×70 px fijo en (399, 58), el 8 % del ancho del cuadro. Midiendo el blanco dentro de ese recuadro aparecen exactamente 4 destellos de 9 o 10 cuadros (unos 300 ms), sin falsos positivos: V = 7,127; 67,143; 127,142 y 151,067 s.
+- **Calidad con `sync.ts`:** diferencias de intervalo de +15,9, +0,3 y −32,3 ms; ritmo de 0,99974, 0,99999 y 1,00135; residuo de la recta de 16,5 ms. Con un solo destello, el error en los demás es de 16 ms o menos, es decir, menos de un cuadro. **Esta grabación no tiene deriva ni saltos medibles.**
+- **La cuadrícula de 8×6 de §16.4 no sirve con este video:** el destello ocupa una fracción pequeña de cada celda, y el movimiento de la cabeza y las esferas producen muchas subidas de brillo más grandes. El investigador aprobó cambiar el método (ver «Decisiones del 2026-10-07»).
+- **`xdf_a_eventos.py` con el XDF real:** exporta las 143 filas de `JuegoEventos` (ahora sin necesidad de `--stream`). Sin `--stream`, en Windows terminaba con un traceback (`EOFError`) porque la entrada redirigida a `NUL` cuenta como terminal. Arreglado: ahora termina con el mensaje que pide `--stream`. Tiene prueba.
+
+### Fase 9 (2026-10-07): construida, espera revisión
+
+Lo hecho en el commit `9edcb8f` y comprobado el 2026-10-07:
+
+- `src/data/sync.ts` (nuevo): `SyncPoint`, traducción lineal por tramos en ambos sentidos (`videoToLsl`, `lslToVideo`), extensión del primer y último tramo, `syncQuality` (ritmo por tramo, diferencia de intervalo con límite 0,5 s, residuo de la recta global), `syncJson` (bloque §16.6). Las sesiones guardadas antes de la v2 (sin `puntos`) siguen funcionando como un punto. Si los puntos son incoherentes, se cae al primer punto para que una sesión guardada siempre se pueda exportar.
+- `events.ts` devuelve todas las filas sync (`syncs`); `export.ts` usa `syncJson`; la pantalla final describe el modelo usado. La configuración sigue con un solo destello (el campo actual) y avisa si el CSV trae varios: la detección y la tabla de revisión son la fase 10.
+- `scripts/xdf_a_eventos.py` y sus pruebas.
+
+Ajustes del 2026-10-07 (sin commit):
+
+- `syncQuality` marcaba como válidos dos `sync` con el mismo tiempo LSL (marcador repetido), mientras que el modelo los rechazaba y caía en silencio a un solo punto. Ahora los dos usan el mismo criterio. Tiene prueba.
+- Prueba nueva: la app lee el CSV que escribe el script (etiqueta con coma entre comillas, CRLF).
+- El script se probó con `pyxdf` 1.17.5 real sobre un XDF de prueba hecho a mano (un stream EEG y uno de marcadores): eligió solo el de marcadores, ordenó las filas y contó 3 sync. Falta probarlo con un XDF real de LabRecorder.
+
 
 **Primera versión terminada (2026-10-06), commit «First version finished, need for LSL timing».** Las 8 fases están construidas y la app está publicada en https://gitorivera.github.io/tet-app/.
 
@@ -39,7 +81,7 @@ Documentos escritos (commit «Specifications for game and tet app syncroniztion 
 Siguientes pasos:
 
 1. **Aprobado (2026-10-06):** destello cada 60 s, 300 ms, arriba del centro de la vista; el cambio del JSON de §16.6 (anotado en CLAUDE.md); y el script `scripts/xdf_a_eventos.py`, que se hace en la fase 9.
-2. **Siguiente: fase 9** (lógica por tramos con pruebas y el script XDF → CSV), luego fase 10 (detección y revisión) y fase 11 (prueba con una grabación real de la Quest).
+2. ~~Siguiente: fase 9~~ Hecha (ver arriba). Luego la fase 10 (detección y revisión) y la fase 11 (prueba con grabaciones reales; la primera se hizo el 2026-10-07).
 3. Sigue pendiente la prueba en la tablet Android instalada desde GitHub Pages (ver «Fase 8: lo que falta»).
 
 **Arreglo de «Compartir» confirmado (2026-10-06):** el investigador compartió los CSV por AirDrop desde su MacBook. Se empieza la fase 8.

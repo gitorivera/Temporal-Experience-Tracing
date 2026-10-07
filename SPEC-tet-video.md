@@ -364,10 +364,24 @@ La grabación de la Quest pasa por la transmisión a la app Meta Horizon del cel
 
 ### 16.4 Detección automática de destellos
 
-- Al cargar el video y el CSV, la pantalla de configuración recorre el video **sin sonido y sin mostrarlo al niño**, a velocidad 4× si el navegador lo permite, y mide el brillo medio de una cuadrícula de 8×6 celdas en cada cuadro (`requestVideoFrameCallback` cuando exista; si no, `requestAnimationFrame`).
-- Un destello es una subida brusca de brillo en una o más celdas contiguas que dura entre 0,1 y 0,8 s. Se elige la celda o región en la que aparecen picos cuyo número e intervalos mejor coinciden con los `sync` del CSV.
-- **Refinamiento:** alrededor de cada candidato se salta cuadro por cuadro (±0,5 s) para encontrar el primer cuadro del destello. Precisión esperada: un cuadro (unos 33 ms a 30 fps).
-- Se muestra una barra de progreso y se puede cancelar. Para un video de 5 minutos se espera menos de 2 minutos de análisis.
+> Método cambiado por el investigador el 2026-10-07, tras la prueba con una grabación real de RM (ESTADO.md). El método anterior, el brillo medio en una cuadrícula de 8×6, no distinguía el destello: este ocupa una fracción pequeña de cada celda, y el movimiento de la cabeza y los objetos del juego producían más de 100 subidas de brillo mayores. Medir solo el recuadro del destello encontró los 4 destellos sin falsos positivos.
+
+El destello es un cuadrado blanco con marco negro, **fijo en la pantalla** (GAME-SPECS §3.2), así que la detección mide solo esa zona del cuadro. Se hace en la pantalla de configuración, al cargar el video y el CSV. El video se recorre **sin sonido y sin mostrarlo al niño**, a 4× si el navegador lo permite, y el tiempo de cada cuadro es su `mediaTime` (`requestVideoFrameCallback` cuando exista; si no, `requestAnimationFrame` y `currentTime`). Nunca se calcula como número de cuadro ÷ fps, porque la grabación de Meta Horizon tiene duración de cuadro variable (de 10 a 45 ms en la prueba).
+
+**Paso 1: ubicar el recuadro del destello.**
+- Automático: en un primer recorrido, con el cuadro reducido (unos 200 px de ancho), se marca cada píxel que pasa a **blanco casi puro** (canal mínimo > 220 de 255) desde un estado no blanco, sigue así entre 0,1 y 0,8 s y luego vuelve. Se agrupan los píxeles vecinos y se elige la zona **compacta y aproximadamente cuadrada**, de entre el 2 % y el 20 % del ancho del cuadro, cuyos pulsos coinciden mejor en número e intervalos con los `sync` del CSV.
+- Manual, si la búsqueda automática falla o hay dudas: en el visor de §16.5, el investigador va a un cuadro donde se vea el destello y lo toca. El recuadro es la zona blanca conectada alrededor del toque.
+- El recuadro se guarda en coordenadas relativas al cuadro (0 a 1), con la configuración en `localStorage`. Como es el mismo en todas las grabaciones del mismo juego y la misma transmisión, la siguiente sesión lo propone primero.
+
+**Paso 2: medir el recuadro en todo el video.**
+- En cada cuadro, la fracción de píxeles del interior del recuadro (sin los bordes) que son blanco casi puro.
+- Un destello es una racha de cuadros con fracción > 0,8 que dura entre 0,1 y 0,8 s. `V_k` es el `mediaTime` del primer cuadro de la racha.
+- **Refinamiento:** como a 4× el navegador puede saltarse cuadros, alrededor de cada destello se recorre el video cuadro por cuadro (±0,5 s) para encontrar el primer cuadro blanco. Precisión esperada: un cuadro (unos 33 ms a 30 fps).
+- Si el número de destellos no coincide con el de filas `sync`, se avisa y se pasa a la revisión de §16.5.
+
+Se muestra una barra de progreso y se puede cancelar. Para un video de 5 minutos se espera menos de 2 minutos de análisis.
+
+**Validación** (grabación de prueba del 2026-10-07: 832×464 px, 167 s): el recuadro mide 70×70 px en (399, 58), el 8 % del ancho. Aparecen 4 rachas de 9 o 10 cuadros, en 7,127, 67,143, 127,142 y 151,067 s, sin falsos positivos. La fase 11 ajusta los umbrales con más grabaciones.
 
 ### 16.5 Revisión y ajuste manual
 
@@ -395,6 +409,6 @@ La grabación de la Quest pasa por la transmisión a la app Meta Horizon del cel
 ### 16.7 Fases de trabajo
 
 9. **Lógica de sincronización por tramos con pruebas:** varios `sync` en `events.ts`, traducción por tramos en ambos sentidos, controles de calidad, cambios en `export.ts` (§16.6). Pruebas con puntos sintéticos, deriva, un salto y un destello faltante. Además, el script `scripts/xdf_a_eventos.py` (Python con `pyxdf`) que exporta el CSV de eventos desde el XDF de LabRecorder (GAME-SPECS §7).
-10. **Detección de destellos y tabla de revisión** en la pantalla de configuración (§16.4, §16.5).
+10. **Detección de destellos y tabla de revisión** en la pantalla de configuración (§16.4, §16.5): ubicar el recuadro del destello (automático o tocándolo) y medirlo en todo el video. Pruebas de la parte pura (rachas, emparejamiento con los `sync`, elección de la zona) sin navegador.
 11. **Prueba con una grabación real** de la Quest hecha con la app Meta Horizon, y ajuste de umbrales.
 

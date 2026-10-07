@@ -104,7 +104,8 @@ export function syncQuality(points: readonly SyncPoint[]): SyncQuality {
   for (let k = 0; k + 1 < p.length; k++) {
     const dv = p[k + 1]!.videoS - p[k]!.videoS;
     const dl = p[k + 1]!.lslS - p[k]!.lslS;
-    if (!(dv > 0)) ordenValido = false;
+    // Mismo criterio que tramos(): ambos relojes deben crecer (un marcador repetido da dl = 0).
+    if (!(dv > 0) || !(dl > 0)) ordenValido = false;
     ritmo.push(dv > 0 ? dl / dv : NaN);
     dif.push(dv - dl);
   }

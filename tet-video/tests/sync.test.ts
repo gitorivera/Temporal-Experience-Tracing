@@ -124,6 +124,16 @@ describe('controles de calidad (SPEC §16.3)', () => {
     expect(q.ok).toBe(false);
   });
 
+  it('dos sync con el mismo tiempo LSL (marcador repetido) no son válidos', () => {
+    const p = points((l) => 12 + (l - 1000));
+    p[3] = { ...p[3]!, lslS: p[2]!.lslS, videoS: p[2]!.videoS + 0.2 };
+    const q = syncQuality(p);
+    expect(q.ordenValido).toBe(false);
+    expect(q.ok).toBe(false);
+    // Coincide con el modelo: sin tramos, se cae al primer punto.
+    expect(syncModel(syncFromPoints(p))).toBe('un_punto');
+  });
+
   it('con menos de 2 puntos no hay nada que controlar', () => {
     expect(syncQuality([])).toMatchObject({ ok: true, difIntervaloMaxS: null, residuoRectaMaxMs: null });
   });
@@ -176,6 +186,18 @@ describe('CSV de eventos con varios destellos', () => {
     expect(r.syncs.map((x) => x.label)).toEqual(['sync_1', 'sync_2', 'sync_3']);
     expect(r.sync?.label).toBe('sync_1');
     expect(r.events.map((x) => x.label)).toEqual(['inicio partida', 'acierto', 'error']);
+  });
+
+  it('lee el CSV que escribe scripts/xdf_a_eventos.py (etiqueta con coma entre comillas)', () => {
+    // Salida real del script con un XDF de prueba leído por pyxdf.
+    const r = parseEvents(
+      'tiempo,evento\r\n1000.000,sync_1\r\n1000.000,inicio partida\r\n1031.250,"acierto, objetivo 3"\r\n1060.000,sync_2\r\n',
+    );
+    if (!r.ok) throw new Error(r.error);
+    expect(r.delimiter).toBe(',');
+    expect(r.syncs.map((x) => x.t)).toEqual([1000, 1060]);
+    expect(r.events.map((x) => x.label)).toEqual(['inicio partida', 'acierto, objetivo 3']);
+    expect(r.skipped).toBe(0);
   });
 
   it('ubica los eventos en el video usando los tramos', () => {

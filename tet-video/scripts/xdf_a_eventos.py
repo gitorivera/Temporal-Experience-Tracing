@@ -6,10 +6,12 @@ Toma el stream de marcadores del juego y escribe un CSV `tiempo,evento` con los 
 
 Uso:
     pip install pyxdf
-    python scripts/xdf_a_eventos.py sesion_P01.xdf --stream JuegoEventos -o eventos_P01.csv
+    python scripts/xdf_a_eventos.py sesion_P01.xdf -o eventos_P01.csv
 
-Sin --stream usa el único stream de tipo Markers del archivo; si hay varios, pide elegir
-(o, si no hay terminal, muestra los nombres y termina). Sin -o escribe <xdf>_eventos.csv.
+Sin --stream usa el stream «JuegoEventos» (GAME-SPECS §4) e ignora los demás, como
+ColorQuestMarkers. Si el archivo no lo tiene, usa el único stream de tipo Markers; si hay
+varios, pide elegir (o, si no hay terminal, muestra los nombres y termina).
+Sin -o escribe <xdf>_eventos.csv.
 """
 from __future__ import annotations
 
@@ -20,6 +22,9 @@ import sys
 from pathlib import Path
 
 SYNC_RE = re.compile(r"^(sync|sincron)", re.IGNORECASE)
+
+# Stream del juego con los marcadores sync_k y los eventos para TET (GAME-SPECS §4).
+DEFAULT_STREAM = "JuegoEventos"
 
 
 def _field(info: dict, key: str) -> str:
@@ -43,8 +48,10 @@ def stream_name(s: dict) -> str:
 
 
 def pick_stream(streams: list[dict], name: str | None, ask=None) -> dict:
-    """Elige el stream por nombre, el único de marcadores, o pregunta con `ask(nombres) -> índice`."""
+    """Elige el stream por nombre, JuegoEventos, el único de marcadores, o pregunta con `ask(nombres) -> índice`."""
     markers = marker_streams(streams)
+    if name is None and any(stream_name(s) == DEFAULT_STREAM for s in streams):
+        name = DEFAULT_STREAM
     if name is not None:
         for s in streams:
             if stream_name(s) == name:
@@ -87,7 +94,11 @@ def _ask_tty(names: list[str]) -> int:
     for i, n in enumerate(names, 1):
         print(f"  {i}. {n}")
     while True:
-        answer = input("¿Cuál exportar? (número): ").strip()
+        try:
+            answer = input("¿Cuál exportar? (número): ").strip()
+        except EOFError:
+            # En Windows, la entrada redirigida a NUL pasa por terminal pero no trae respuesta.
+            raise SystemExit("\nSin respuesta; elige el stream con --stream: " + ", ".join(names))
         if answer.isdigit() and 1 <= int(answer) <= len(names):
             return int(answer) - 1
 
@@ -95,7 +106,7 @@ def _ask_tty(names: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Exporta el CSV de eventos para la app TET desde un XDF.")
     p.add_argument("xdf", type=Path, help="archivo .xdf de LabRecorder")
-    p.add_argument("--stream", help="nombre del stream de marcadores del juego")
+    p.add_argument("--stream", help=f"nombre del stream de marcadores (por defecto {DEFAULT_STREAM})")
     p.add_argument("-o", "--output", type=Path, help="CSV de salida (por defecto <xdf>_eventos.csv)")
     args = p.parse_args(argv)
 

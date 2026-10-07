@@ -19,6 +19,10 @@ Prevalecen sobre el texto del SPEC:
 2. **JSON: bloque `sincronizacion` ampliado** (SPEC §16.6, aprobado 2026-10-06): conserva `video_s` y `lsl_s` del primer punto y agrega `modelo`, `puntos`, `ritmo_por_tramo`, `dif_intervalo_max_s` y `residuo_recta_max_ms`. Las columnas de los CSV no cambian.
 3. **Coma decimal con separador coma** (`1532,40,sync`): es ambiguo y el lector **no** lo resuelve; se lee como tiempo 1532 y etiqueta «40». En la fase 4, la pantalla de configuración debe **mostrar un aviso** junto al campo del CSV de eventos: usar `;`, tabulador o comillas si los números llevan coma decimal.
 
+4. **Detección de destellos por el recuadro fijo del destello** (SPEC §16.4 reescrito, 2026-10-07), no por la cuadrícula de 8×6. Ver ESTADO.md.
+5. **El stream del XDF es `JuegoEventos`;** `ColorQuestMarkers` se ignora. `scripts/xdf_a_eventos.py` usa `JuegoEventos` por omisión.
+6. **`test_files/` es solo para pruebas locales** (video de la Quest y XDF): está en `.gitignore` y nunca se sube.
+
 Decisiones de la fase 2 aceptadas sin objeción:
 
 - El nombre de archivo usa la hora local de la tablet. `inicio` es ISO-8601 con desfase (`2026-10-05T15:04:46.123-05:00`).
@@ -63,6 +67,8 @@ npm test           # Vitest
 npm run build      # tsc + vite build + service worker
 npm run preview    # sirve dist/ (con service worker: puede mostrar una versión en caché)
 node scripts/make-icons.mjs   # regenera los íconos de public/icons
+python -m unittest discover -s scripts -p "test_*.py"   # pruebas de xdf_a_eventos.py
+python scripts/xdf_a_eventos.py ../test_files/<archivo>.xdf -o eventos.csv   # XDF → CSV de eventos
 bash scripts/deploy-pages.sh  # publica dist/ en GitHub Pages (repo público gitorivera/tet-app)
 ```
 

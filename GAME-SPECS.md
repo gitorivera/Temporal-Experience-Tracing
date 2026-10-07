@@ -125,10 +125,10 @@ tiempo,evento
 
   ```
   pip install pyxdf
-  python scripts/xdf_a_eventos.py sesion_P01.xdf --stream JuegoEventos -o eventos_P01.csv
+  python scripts/xdf_a_eventos.py sesion_P01.xdf -o eventos_P01.csv
   ```
 
-  Si se omite `--stream`, usa el único stream de tipo `Markers` del archivo, y si hay varios, pide elegir.
+  Por omisión usa el stream `JuegoEventos` e ignora los demás (p. ej. `ColorQuestMarkers`, el stream detallado del juego). Con `--stream` se elige otro. Si el archivo no tiene `JuegoEventos`, usa el único stream de tipo `Markers`, y si hay varios, pide elegir.
 
 ## 8. Lista de comprobación antes del piloto
 
