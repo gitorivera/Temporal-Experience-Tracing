@@ -285,6 +285,20 @@ export class FlashVideo {
     return shown;
   }
 
+  /**
+   * Final del último cuadro: su tiempo más lo que dura el anterior. Puede ser menor que la duración
+   * del archivo, que el navegador toma de la pista más larga (en la prueba, el audio dura 40 ms más).
+   * Sin `requestVideoFrameCallback` no se puede medir y se usa la duración.
+   */
+  async lastFrameEnd(): Promise<number> {
+    if (typeof this.el.requestVideoFrameCallback !== 'function') return this.duration;
+    const last = await this.showAt(this.duration, NaN);
+    if (!Number.isFinite(last)) return this.duration;
+    const prev = await this.step(last, -1);
+    const frame = last - prev > 0 && last - prev < 0.2 ? last - prev : DEFAULT_FRAME_S;
+    return Math.min(this.duration, last + frame);
+  }
+
   /** Máscara de blanco del cuadro a la vista, en la cuadrícula reducida (para marcar el recuadro). */
   grabMask(): { mask: Uint8Array; width: number; height: number } {
     const w = this.scanCanvas.width;

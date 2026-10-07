@@ -412,3 +412,16 @@ Se muestra una barra de progreso y se puede cancelar. Para un video de 5 minutos
 10. **Detección de destellos y tabla de revisión** en la pantalla de configuración (§16.4, §16.5): ubicar el recuadro del destello (automático o tocándolo) y medirlo en todo el video. Pruebas de la parte pura (rachas, emparejamiento con los `sync`, elección de la zona) sin navegador.
 11. **Prueba con una grabación real** de la Quest hecha con la app Meta Horizon, y ajuste de umbrales.
 
+Agregado tras la fase 10 (aprobado por el investigador el 2026-10-07): la **ventana de trazado** de §16.8.
+
+### 16.8 Ventana de trazado (recorte virtual)
+
+> Aprobado por el investigador el 2026-10-07: recorte virtual, el fin en el destello del último sync y, en los CSV, solo las filas de la ventana.
+
+- El niño ve y traza solo la partida: del destello de la **primera** fila sync (al pulsar «Iniciar partida») al de la **última** (fin de la partida). Así no puede trazar antes de que llegue la señal de sincronía ni después del fin del juego.
+- El archivo de video **no se modifica**: recodificarlo en la tablet sería lento y alteraría los tiempos de los cuadros. El reproductor se limita al tramo [inicio, fin]: «Empezar» y «Repetir» arrancan en el inicio, la reproducción se detiene en el fin, y la línea de tiempo y la gráfica muestran solo ese tramo.
+- Los extremos se calculan pasando los tiempos LSL de la primera y la última fila sync por la sincronización (§16.3 o §8.2), así que valen aunque falte el destello de alguna de ellas en el video. Con una sola fila sync, el fin es el final del video. Sin filas sync (sin tiempo LSL), y con la grabación de ejemplo, se usa el video completo.
+- El fin nunca pasa del **último cuadro** del video. Su final se mide durante la detección de destellos, porque la duración que da el navegador puede ser la de la pista de audio (en la prueba, 40 ms más larga). Además, la duración de la ventana se recorta a un múltiplo de 0,1 s (menos de 0,1 s), para que la última muestra a 10 Hz caiga justo en el fin.
+- La pantalla de configuración muestra la ventana («El niño verá y trazará solo la partida: de 7,13 s a 151,03 s del video»), y la pantalla final la incluye en los datos de la sesión.
+- **Archivos de salida:** los CSV de las dimensiones tienen solo las filas de la ventana. `tiempo_video_s` y `tiempo_lsl_s` siguen en el reloj del video y de LSL; las ventanas de promedio empiezan en el inicio de la ventana. La práctica no cambia: empieza en 0. El JSON agrega `"ventana": {"inicio_s": …, "fin_s": …}` (null en sesiones guardadas antes) y, en cada dimensión, `inicio_s`: el valor i de `valores_10hz` está en `inicio_s + i / hz`, y los tiempos de `trazo_crudo` están en tiempo del video.
+

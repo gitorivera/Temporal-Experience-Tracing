@@ -67,6 +67,14 @@ function ordered(s: SessionData): { rec: DimensionRecord; orden: number }[] {
   return s.practica ? [{ rec: s.practica, orden: 0 }, ...out] : out;
 }
 
+/**
+ * Segundo del video en que empieza el buffer de una dimensión: el inicio de la ventana de trazado
+ * (SPEC §16.8). La práctica (orden 0) tiene su propio reproductor y empieza en 0.
+ */
+function offsetOf(s: SessionData, orden: number): number {
+  return orden === 0 ? 0 : (s.ventana?.inicioS ?? 0);
+}
+
 function prefix(s: SessionData, rec: DimensionRecord, orden: number): string {
   return [csvField(s.participante), s.condicion, rec.modo, csvField(rec.dimension.nombre), orden].join(',');
 }
@@ -78,8 +86,10 @@ export function buildVentanasCsv(s: SessionData): string {
   const rows: string[] = [];
   s.dimensiones.forEach((rec, i) => {
     const pre = prefix(s, rec, i + 1);
+    const off = offsetOf(s, i + 1);
     for (const w of resample(rec.valores, rec.duracionS, s.resolucionS)) {
-      rows.push([pre, fmtT(w.t), fmtLsl(w.t, s.sincronizacion, false), fmtV(w.v)].join(','));
+      const t = off + w.t;
+      rows.push([pre, fmtT(t), fmtLsl(t, s.sincronizacion, false), fmtV(w.v)].join(','));
     }
   });
   return csv(SERIES_HEADER, rows);
@@ -90,8 +100,9 @@ export function build10HzCsv(s: SessionData): string {
   const rows: string[] = [];
   for (const { rec, orden } of ordered(s)) {
     const pre = prefix(s, rec, orden);
+    const off = offsetOf(s, orden);
     rec.valores.forEach((v, i) => {
-      const t = i / HZ;
+      const t = off + i / HZ;
       rows.push([pre, fmtT(t), fmtLsl(t, s.sincronizacion, orden === 0), fmtV(v)].join(','));
     });
   }
@@ -103,23 +114,27 @@ export function buildToquesCsv(s: SessionData): string {
   const rows: string[] = [];
   for (const { rec, orden } of ordered(s)) {
     const pre = prefix(s, rec, orden);
+    const off = offsetOf(s, orden);
     for (const p of rec.trazoCrudo) {
-      rows.push([pre, p.pasada, fmtT(p.t), fmtLsl(p.t, s.sincronizacion, orden === 0), fmtV(p.v), Math.round(p.ms)].join(','));
+      const t = off + p.t;
+      rows.push([pre, p.pasada, fmtT(t), fmtLsl(t, s.sincronizacion, orden === 0), fmtV(p.v), Math.round(p.ms)].join(','));
     }
   }
   return csv(TOQUES_HEADER, rows);
 }
 
-function packDimension(rec: DimensionRecord, orden: number) {
+/** `off`: segundo del video del primer valor; el valor i está en off + i / hz. */
+function packDimension(rec: DimensionRecord, orden: number, off: number) {
   return {
     orden,
     dimension: rec.dimension.nombre,
     pregunta: rec.dimension.pregunta,
     modo: rec.modo,
+    inicio_s: round(off, 3),
     duracion_s: rec.duracionS,
     hz: HZ,
     valores_10hz: rec.valores.map((v) => (Number.isNaN(v) ? null : round(v, 4))),
-    trazo_crudo: rec.trazoCrudo.map((p) => ({ pasada: p.pasada, t: round(p.t, 3), v: round(p.v, 4), ms: Math.round(p.ms) })),
+    trazo_crudo: rec.trazoCrudo.map((p) => ({ pasada: p.pasada, t: round(off + p.t, 3), v: round(p.v, 4), ms: Math.round(p.ms) })),
     cobertura: round(coverageOf(rec.valores), 4),
     toques: rec.toques,
     pasadas: rec.pasadas,
@@ -138,6 +153,8 @@ export function buildJson(s: SessionData): string {
     grabacion: s.grabacion,
     // video_s y lsl_s se conservan para los scripts existentes; el resto es de la v2 (SPEC §16.6).
     sincronizacion: syncJson(s.sincronizacion),
+    // Tramo del video que se reprodujo y se trazó (SPEC §16.8); null en sesiones guardadas antes.
+    ventana: s.ventana ? { inicio_s: round(s.ventana.inicioS, 3), fin_s: round(s.ventana.finS, 3) } : null,
     eventos: s.eventos.map((e) => ({ t: round(e.t, 3), label: e.label, icon: e.icon })),
     configuracion: {
       modo: s.modo,
@@ -146,9 +163,9 @@ export function buildJson(s: SessionData): string {
       orden_aleatorio: s.ordenAleatorio,
     },
     practica: s.practica
-      ? { ...packDimension(s.practica, 0), correlacion_con_velocidad: r === null ? null : round(r, 4) }
+      ? { ...packDimension(s.practica, 0, 0), correlacion_con_velocidad: r === null ? null : round(r, 4) }
       : null,
-    dimensiones: s.dimensiones.map((rec, i) => packDimension(rec, i + 1)),
+    dimensiones: s.dimensiones.map((rec, i) => packDimension(rec, i + 1, offsetOf(s, i + 1))),
   };
   // Sin BOM (autorizado por el investigador): muchos lectores de JSON lo rechazan.
   return JSON.stringify(data, null, 1);

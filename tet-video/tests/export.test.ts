@@ -249,10 +249,11 @@ describe('JSON', () => {
     expect(text.startsWith('{')).toBe(true); // sin BOM
     const j = JSON.parse(text);
     expect(Object.keys(j)).toEqual([
-      'version_app', 'participante', 'condicion', 'inicio', 'grabacion', 'sincronizacion',
+      'version_app', 'participante', 'condicion', 'inicio', 'grabacion', 'sincronizacion', 'ventana',
       'eventos', 'configuracion', 'practica', 'dimensiones',
     ]);
     expect(j.version_app).toBe('1.0.0');
+    expect(j.ventana).toBeNull(); // sesión guardada antes de la ventana de trazado
     // SPEC §16.6: se conservan video_s y lsl_s y se agrega el resto.
     expect(j.sincronizacion).toEqual({
       video_s: 12.4,
@@ -268,10 +269,10 @@ describe('JSON', () => {
 
     const d = j.dimensiones[0];
     expect(Object.keys(d)).toEqual([
-      'orden', 'dimension', 'pregunta', 'modo', 'duracion_s', 'hz', 'valores_10hz', 'trazo_crudo',
+      'orden', 'dimension', 'pregunta', 'modo', 'inicio_s', 'duracion_s', 'hz', 'valores_10hz', 'trazo_crudo',
       'cobertura', 'toques', 'pasadas', 'saltos_video', 'tiempo_respuesta_s',
     ]);
-    expect(d).toMatchObject({ orden: 1, dimension: 'Diversión', modo: 'deslizador', duracion_s: 120, hz: 10, cobertura: 1 });
+    expect(d).toMatchObject({ orden: 1, dimension: 'Diversión', modo: 'deslizador', inicio_s: 0, duracion_s: 120, hz: 10, cobertura: 1 });
     expect(d.valores_10hz).toHaveLength(1201);
     expect(d.trazo_crudo[1]).toEqual({ pasada: 1, t: 12.4, v: 0.75, ms: 22634 });
     expect(d.tiempo_respuesta_s).toBe(131.23);
@@ -302,5 +303,48 @@ describe('buildAllFiles', () => {
     ]);
     // BOM solo en los CSV.
     expect(files.map((f) => f.content.startsWith('\uFEFF'))).toEqual([true, true, true, false]);
+  });
+});
+
+describe('ventana de trazado (SPEC §16.8)', () => {
+  // La partida va de 12,4 s a 42,4 s del video: el buffer de las dimensiones cubre solo esos 30 s.
+  const ventana = { inicioS: 12.4, finS: 42.4 };
+  const conVentana = () =>
+    session({
+      ventana,
+      practica: { ...rec(record(PRACTICE_DURATION, speedAt), 0), dimension: { ...PRACTICE_DIMENSION } },
+      dimensiones: [rec(record(30), 0)],
+    });
+
+  it('el CSV de 10 Hz tiene solo las filas de la ventana, en tiempo del video y de LSL', () => {
+    const r = rows(build10HzCsv(conVentana())).filter((x) => x[4] === '1');
+    expect(r).toHaveLength(301);
+    expect(r[0]![5]).toBe('12.400');
+    expect(r[0]![6]).toBe('1532.400');
+    expect(r.at(-1)![5]).toBe('42.400');
+    expect(r.at(-1)![6]).toBe('1562.400');
+  });
+
+  it('la práctica no se corre: sigue desde 0', () => {
+    const r = rows(build10HzCsv(conVentana())).filter((x) => x[4] === '0');
+    expect(r[0]![5]).toBe('0.000');
+  });
+
+  it('las ventanas de promedio empiezan en el inicio de la ventana', () => {
+    const r = rows(buildVentanasCsv(conVentana()));
+    expect(r).toHaveLength(30);
+    expect(r[0]![5]).toBe('12.400');
+    expect(r.at(-1)![5]).toBe('41.400');
+  });
+
+  it('los toques y el JSON quedan en tiempo del video', () => {
+    const s = conVentana();
+    const t = rows(buildToquesCsv(s)).filter((x) => x[4] === '1');
+    expect(t.map((x) => x[6])).toEqual(['12.400', '24.800']);
+    const j = JSON.parse(buildJson(s));
+    expect(j.ventana).toEqual({ inicio_s: 12.4, fin_s: 42.4 });
+    expect(j.dimensiones[0].inicio_s).toBe(12.4);
+    expect(j.dimensiones[0].trazo_crudo.map((p: { t: number }) => p.t)).toEqual([12.4, 24.8]);
+    expect(j.practica.inicio_s).toBe(0);
   });
 });

@@ -3,6 +3,7 @@
 import type { MountScreen } from '../main';
 import { isoLocal } from '../data/export';
 import type { VideoEvent } from '../data/events';
+import { eventsInWindow } from '../data/window';
 import type { Player } from '../players/player';
 import { createPracticePlayer } from '../players/scenes';
 import { PRACTICE_DIMENSION } from '../practice';
@@ -61,9 +62,11 @@ export const mountTracing: MountScreen = (root, go) => {
   const msNow = () => performance.now() - t0;
 
   const practicePlayer = config.practica ? createPracticePlayer() : null;
+  // El reproductor ya está recortado a la ventana (SPEC §16.8): los eventos se dibujan en su tiempo.
+  const ventanaEventos = eventsInWindow(plan.eventos, plan.ventana);
   const items: Item[] = [
     ...(practicePlayer ? [{ dimension: { ...PRACTICE_DIMENSION }, practica: true, player: practicePlayer, eventos: [] }] : []),
-    ...plan.orden.map((dimension) => ({ dimension, practica: false, player: plan.player, eventos: plan.eventos })),
+    ...plan.orden.map((dimension) => ({ dimension, practica: false, player: plan.player, eventos: ventanaEventos })),
   ];
   let practicaRec: DimensionRecord | null = null;
   const dimensiones: DimensionRecord[] = [];
@@ -485,6 +488,7 @@ export const mountTracing: MountScreen = (root, go) => {
       inicio,
       grabacion: plan!.grabacion,
       sincronizacion: plan!.sincronizacion,
+      ventana: plan!.ventana,
       eventos: plan!.eventos,
       modo: config.modo,
       velocidad: config.velocidad,

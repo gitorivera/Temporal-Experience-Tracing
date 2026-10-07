@@ -15,9 +15,10 @@
 | 7. IndexedDB y sesiones guardadas | Revisada | `5e4a962` Phase 7 ready, persistent saving and config table; arreglo de «Compartir»: Sharing files enabled |
 | 8. Pulido para tablet | Construida; falta la prueba en la tablet real | Phase 8 ready, app created |
 | 9. Sincronización por tramos (lógica y script XDF) | Revisada | `9ec5693` Phase 9 builded, piecewise LSL sync and XDF script tested with a real RM recording |
-| 10. Detección de destellos y tabla de revisión | Revisada (la detección funcionó bien con la grabación real) | Phase 10 built: automatic sync flash detection… |
+| 10. Detección de destellos y tabla de revisión | Revisada (la detección funcionó bien con la grabación real) | `110ec08` Phase 10 built: automatic sync flash detection works on a real RM recording |
+| 10b. Ventana de trazado (recorte virtual, SPEC §16.8) | Revisada (decisiones aceptadas) | Video length adjusted to avoid off game experience tracing |
 
-Pruebas: 226 de 226 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
+Pruebas: 244 de 244 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md. Las de la fase 10 también.
 
@@ -27,9 +28,27 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 ### Para retomar (2026-10-07, tarde)
 
-1. **Fase 10 revisada y con commit** (2026-10-07): el investigador confirmó que la detección de destellos funciona bien.
+0. **Ventana de trazado revisada y con commit** «Video length adjusted to avoid off game experience tracing»; el investigador aceptó las decisiones.
+1. **Fase 10 revisada y con commit** `110ec08` (2026-10-07): el investigador confirmó que la detección de destellos funciona bien.
 2. Para revisarla: `npm run dev`, cargar `test_files/RM.mp4` y el CSV hecho con `python scripts/xdf_a_eventos.py ../test_files/sub-P001_ses-S001_task-Default_run-001_beh.xdf -o eventos.csv`. Debe salir «Se encontraron los 4 destellos» con V = 7,127; 67,143; 127,142 y 151,067 s.
 3. Después: fase 11 (más grabaciones reales, partidas de 5 min y con el casco EEG; ajuste de umbrales) y la prueba en la tablet Android (ver «Fase 8: lo que falta»), que ahora incluye la detección de destellos.
+
+### Ventana de trazado (2026-10-07): revisada
+
+Pedido del investigador: que el niño no pueda trazar antes de que llegue la señal de sincronía y empiece el juego, y que no haya trazo después del último cuadro del video. Se le explicó que recortar el archivo en la página no conviene (recodificar es lento en la tablet y altera los tiempos de los cuadros). Eligió: **recorte virtual**; el fin, en el **destello del último sync** (fin de la partida); y en los CSV, **solo las filas de la ventana**. Escrito en SPEC §16.8 y en CLAUDE.md (cambio 7).
+
+Archivos nuevos: `src/data/window.ts` (`traceWindow`, `eventsInWindow`) y `src/players/windowedPlayer.ts` (`WindowedPlayer`: envuelve el reproductor y muestra [inicio, fin] en tiempo local, así que la pantalla de trazado no cambió), con pruebas en `tests/window.test.ts`. Cambios: `flashScan.ts` (`lastFrameEnd`: mide el final real del último cuadro), `flashReview.ts` (`videoEnd()`), `setup.ts` (calcula y muestra la ventana; entrega el reproductor recortado), `state.ts` (`SessionPlan.ventana`, `SessionData.ventana`), `tracing.ts` (eventos en tiempo de la ventana; guarda la ventana), `export.ts` (desfase en los 3 CSV y en el JSON; `ventana` e `inicio_s`) y `done.ts` (línea «Ventana de trazado»).
+
+Decisiones tomadas (aceptadas por el investigador):
+- Los extremos salen de pasar la primera y la última fila sync por la sincronización: valen aunque falte algún destello. Con una sola fila sync, el fin es el final del video; sin filas sync o con la grabación de ejemplo, el video completo.
+- La duración de la ventana se recorta a un múltiplo de 0,1 s (el fin se adelanta menos de 0,1 s), para que la última fila a 10 Hz caiga justo en el fin (sin la muestra vacía que quedaba después) y la cobertura llegue a 1,0.
+- El final del último cuadro solo se mide cuando hay detección de destellos (el `<video>` de la tarjeta está en la página). Sin CSV con sync, se usa la duración del navegador (en `RM.mp4`, 167,044 s por el audio, frente a 167,005 s del video).
+- Los eventos se siguen exportando en tiempo del video (todos los que caen en el video); la pantalla del niño muestra solo los de la ventana.
+- En el JSON, `trazo_crudo.t` pasa a tiempo del video (antes, desde 0 del video, que era lo mismo).
+
+Pruebas: 244 de 244 en Vitest (18 nuevas: ventana, eventos, `WindowedPlayer` con reloj falso, exportación con ventana). En el navegador con `RM.mp4` y su CSV, a 2×: la configuración muestra «de 7,13 s a 151,03 s del video (2:23)»; antes de «Empezar» el video está en 7,127; la pasada se detiene en 151,027 y queda en pausa; el CSV a 10 Hz tiene 1440 filas por dimensión, de 7,127 s (LSL 4689,153) a 151,027 s (LSL 4833,069), la última con valor; el JSON trae `ventana` {7,127; 151,027}, `inicio_s` 7,127, `duracion_s` 143,9 y cobertura 1; la pantalla final muestra la ventana. La consola no mostró errores.
+
+Observación para el investigador: con 139 eventos en 2,4 min (cada acierto con su premio), la línea de iconos y las marcas de la gráfica se ven muy cargadas. Podría convenir mostrar al niño solo algunos tipos de evento (no se ha tocado).
 
 ### Fase 10 (2026-10-07): revisada
 
@@ -180,6 +199,8 @@ Lo que se revisó:
 - `src/data/flash.ts`: detección de destellos sin DOM (máscara de blanco, rachas, pulsos por píxel, zonas, emparejamiento con los sync, recuadro tocado).
 - `src/players/flashScan.ts`: `FlashVideo` (recorrido a 4×, refinamiento a 0,5×, visor cuadro a cuadro).
 - `src/screens/flashReview.ts`: tarjeta «Destellos de sincronización», montada dentro de `setup.ts`.
+- `src/data/window.ts`: ventana de trazado (`traceWindow`, `eventsInWindow`).
+- `src/players/windowedPlayer.ts`: `WindowedPlayer`, el reproductor recortado a la ventana (tiempo local).
 - `src/data/export.ts`: los 4 archivos de salida (`buildAllFiles`), `fileBase`, `isoLocal`.
 - `src/data/download.ts`: `downloadFile`, `downloadBlob`, `shareableFiles` (solo los CSV), `canShareFiles`, `shareFiles` (un envío a la vez; devuelve `compartido`/`cancelado`/`ocupado`), `shareErrorMessage`.
 - `src/data/storage.ts`: IndexedDB con `idb` (`putSession`, `getSession`, `listSessions`, `deleteSession`), `requestPersistence`, y la parte pura con pruebas (`sessionId`, `toStored`, `sortSessions`, `estadoTexto`, `buildZip`, `zipName`).

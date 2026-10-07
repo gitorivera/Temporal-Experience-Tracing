@@ -3,6 +3,8 @@ import type { MountScreen } from '../main';
 import { dimensionOrder, loadSavedConfig, RESOLUCION_MIN, roundSync, saveConfig, validateConfig } from '../config';
 import { parseEvents, parseNumber, toVideoEvents, type ParseResult, type Sync } from '../data/events';
 import { syncFromPoints } from '../data/sync';
+import { traceWindow, type Ventana } from '../data/window';
+import { WindowedPlayer } from '../players/windowedPlayer';
 import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
 import { APP_VERSION, configPorDefecto, setPlan, type Config, type Dimension } from '../state';
@@ -118,6 +120,7 @@ export const mountSetup: MountScreen = (root, go) => {
             <small>Segundo del video donde aparece el destello que el juego marca en LSL. Dos decimales. Si el CSV trae filas sync, se llena solo con el destello encontrado.</small>
             <span class="status" id="sync-status" aria-live="polite"></span>
           </label>
+          <p class="status" id="ventana-status" aria-live="polite"></p>
           <label class="field">Resolución de exportación (s)
             <input type="text" id="f-resolucion" inputmode="decimal" autocomplete="off">
             <small>Ancho de las ventanas del CSV de promedios; mínimo 0,1. Ajústala a las ventanas del índice de engagement.</small>
@@ -176,6 +179,7 @@ export const mountSetup: MountScreen = (root, go) => {
   const videoStatus = $('video-status');
   const eventosStatus = $('eventos-status');
   const syncStatus = $('sync-status');
+  const ventanaStatus = $('ventana-status');
   const resolucionStatus = $('resolucion-status');
   const dimsBox = $('dims');
   const btnRestaurar = $<HTMLButtonElement>('dim-restaurar');
@@ -360,8 +364,33 @@ export const mountSetup: MountScreen = (root, go) => {
       : { videoS, lslS: null };
   };
 
+  /**
+   * Tramo del video que el niño verá y trazará (SPEC §16.8): del destello de la primera fila sync
+   * al de la última. El final nunca pasa del último cuadro (medido en la detección de destellos).
+   */
+  const currentWindow = (): Ventana | null => {
+    if (!video) return null;
+    const syncs = events?.result.syncs.map((x) => x.t) ?? [];
+    return traceWindow(syncs, currentSync(), flashes.videoEnd() ?? video.player.duration);
+  };
+
+  function renderWindowStatus() {
+    const v = currentWindow();
+    if (!video || !v) return setStatus(ventanaStatus, '');
+    const whole = v.inicioS === 0 && v.finS >= video.player.duration - 0.1;
+    setStatus(
+      ventanaStatus,
+      whole
+        ? 'El niño verá y trazará el video completo (sin filas sync no se recorta).'
+        : `El niño verá y trazará solo la partida: de ${num(v.inicioS, 2)} s a ${num(v.finS, 2)} s del video ` +
+            `(${formatTime(v.finS - v.inicioS)}), del destello de la primera fila sync al de la última.`,
+      whole ? '' : 'ok',
+    );
+  }
+
   /** Mensaje del archivo leído, más cuántos eventos caen dentro del video con el destello actual. */
   function renderEventsStatus() {
+    renderWindowStatus();
     fEventosQuitar.hidden = events === null;
     if (!events) {
       if (!eventosStatus.classList.contains('error')) setStatus(eventosStatus, 'Sin archivo de eventos.');
@@ -550,16 +579,19 @@ export const mountSetup: MountScreen = (root, go) => {
     const config = v.config;
     const usandoVideo = video !== null;
     const sync: Sync = usandoVideo ? currentSync() : { videoS: 0, lslS: null };
-    const player = video?.player ?? createDemoPlayer();
-    const eventos = usandoVideo
+    const ventana = currentWindow();
+    const player = video && ventana ? new WindowedPlayer(video.player, ventana) : createDemoPlayer();
+    // Eventos en tiempo del video completo (no de la ventana): así se exportan.
+    const eventos = video
       ? events
-        ? toVideoEvents(events.result.events, sync, player.duration)
+        ? toVideoEvents(events.result.events, sync, video.player.duration)
         : []
       : DEMO_EVENTS.map((ev) => ({ ...ev }));
 
     setPlan({
       config,
       player,
+      ventana: ventana ?? { inicioS: 0, finS: player.duration },
       grabacion: video?.name ?? null,
       sincronizacion: sync,
       eventos,

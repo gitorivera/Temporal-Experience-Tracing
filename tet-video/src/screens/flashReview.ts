@@ -36,6 +36,8 @@ export interface FlashReview {
   points(): SyncPoint[] | null;
   /** Lo que impide comenzar la sesión. */
   startErrors(): string[];
+  /** Final del último cuadro del video, medido tras el recorrido; null si aún no se midió. */
+  videoEnd(): number | null;
   destroy(): void;
 }
 
@@ -131,6 +133,7 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
   let refineTotal = 0;
   let useTramos = false;
   let frameS = DEFAULT_FRAME_S;
+  let contentEnd: number | null = null;
   /** Aumenta con cada detección o cambio de entrada, para ignorar resultados que llegan tarde. */
   let runId = 0;
   let abort = new AbortController();
@@ -321,6 +324,8 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
         fraction = f;
         render();
       }, abort.signal);
+      if (run !== runId) return;
+      contentEnd = await fv.lastFrameEnd();
       if (run !== runId) return;
       await locate(run);
     } catch (err) {
@@ -539,6 +544,7 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
         fv?.destroy();
         fv = null;
         acc = null;
+        contentEnd = null;
       }
       file = next;
       currentSig = sig;
@@ -567,6 +573,9 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
         return ['Los destellos no cuadran con las filas sync (ver «Destellos de sincronización»): revísalos o elige sincronizar con un solo destello.'];
       }
       return [];
+    },
+    videoEnd() {
+      return contentEnd;
     },
     destroy() {
       runId++;

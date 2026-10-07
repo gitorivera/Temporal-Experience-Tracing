@@ -49,6 +49,12 @@ function metaLines(s: SessionData): [string, string][] {
     ['Inicio', new Date(s.inicio).toLocaleString('es-CO')],
     ['Grabación', s.grabacion ?? 'Grabación de ejemplo'],
     ['Sincronización', syncText(sync)],
+    [
+      'Ventana de trazado',
+      s.ventana && s.grabacion
+        ? `${num(s.ventana.inicioS, 2)} s a ${num(s.ventana.finS, 2)} s del video (${formatTime(s.ventana.finS - s.ventana.inicioS)})`
+        : 'video completo',
+    ],
     ['Eventos en el video', String(s.eventos.length)],
     ['Resolución de exportación', `${num(s.resolucionS, s.resolucionS % 1 ? 1 : 0)} s`],
   ];

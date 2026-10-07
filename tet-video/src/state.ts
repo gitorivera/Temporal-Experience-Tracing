@@ -1,6 +1,7 @@
 // Estado de la sesión y configuración por defecto (SPEC §6).
 import type { Sync, VideoEvent } from './data/events';
 import type { Box } from './data/flash';
+import type { Ventana } from './data/window';
 import type { Player } from './players/player';
 
 export type Condicion = 'RM' | 'Tablet';
@@ -66,6 +67,12 @@ export interface SessionData {
   /** Nombre del archivo de video; null si se usó la grabación de ejemplo. */
   grabacion: string | null;
   sincronizacion: Sync;
+  /**
+   * Tramo del video que se trazó (SPEC §16.8), en segundos del video. Los tiempos de las dimensiones
+   * (buffer y trazo crudo) se cuentan desde su inicio. Ausente en sesiones guardadas antes: inicio 0.
+   */
+  ventana?: Ventana;
+  /** Eventos en tiempo del video (no de la ventana). */
   eventos: VideoEvent[];
   modo: ModoRespuesta;
   velocidad: Velocidad;
@@ -83,12 +90,14 @@ export interface SessionData {
 export interface SessionPlan {
   /** Configuración validada: solo dimensiones completas, textos sin espacios sobrantes. */
   config: Config;
-  /** Video de la partida, o la grabación de ejemplo si no se cargó video. */
+  /** Video de la partida, ya recortado a la ventana, o la grabación de ejemplo si no se cargó video. */
   player: Player;
+  /** Tramo del video que se reproduce y se traza (SPEC §16.8); el video completo con la grabación de ejemplo. */
+  ventana: Ventana;
   /** Nombre del archivo de video; null con la grabación de ejemplo. */
   grabacion: string | null;
   sincronizacion: Sync;
-  /** Eventos en tiempo de video, ya dentro de [0, duración]. */
+  /** Eventos en tiempo del video, ya dentro de [0, duración]; la pantalla de trazado los pasa a la ventana. */
   eventos: VideoEvent[];
   /** Dimensiones en el orden en que se responderán (sin la práctica). */
   orden: Dimension[];
