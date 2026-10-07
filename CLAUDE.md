@@ -58,6 +58,14 @@ Decisiones de la fase 7 aceptadas sin objeción:
 - En el ZIP, si dos sesiones dan el mismo nombre base, la carpeta de la segunda lleva «_2».
 - Las llamadas a IndexedDB se prueban en el navegador, no con Vitest (no se agregó `fake-indexeddb`).
 
+Decisiones de la fase 10 aceptadas sin objeción:
+
+- La detección de destellos arranca sola al tener el video y un CSV con filas sync; «Volver a detectar» la repite.
+- Los destellos se emparejan con los sync por desfase (cada par como ancla, tolerancia 0,5 s + 0,5 % de la distancia), no estrictamente por orden: un destello perdido o uno de más no corren a los demás.
+- Cada punto se puede quitar de la tabla; por tramos se exigen al menos 2 puntos incluidos.
+- El campo «Segundo del destello» se llena solo con el destello de la primera fila sync, y el recuadro se recuerda en `localStorage`.
+- No se puede comenzar mientras la detección sigue en curso ni, por tramos, con una diferencia de intervalo mayor que 0,5 s; con «Solo el primero» sí.
+
 ## Comandos (dentro de `tet-video/`)
 
 ```

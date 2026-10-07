@@ -1,5 +1,6 @@
 // Estado de la sesión y configuración por defecto (SPEC §6).
 import type { Sync, VideoEvent } from './data/events';
+import type { Box } from './data/flash';
 import type { Player } from './players/player';
 
 export type Condicion = 'RM' | 'Tablet';
@@ -25,6 +26,11 @@ export interface Config {
   /** Resolución de exportación en segundos (≥ 0,1). */
   resolucionS: number;
   dimensiones: Dimension[];
+  /**
+   * Recuadro del destello en el video, en coordenadas relativas (SPEC §16.4). Es el mismo en todas
+   * las grabaciones del mismo juego y la misma transmisión: la siguiente detección lo prueba primero.
+   */
+  recuadroDestello: Box | null;
 }
 
 /** Cambio de valor registrado durante una pasada (trazo crudo). */
@@ -145,5 +151,6 @@ export function configPorDefecto(): Config {
     syncVideoS: 0,
     resolucionS: 1,
     dimensiones: DIMENSIONES_POR_DEFECTO.map((d) => ({ ...d })),
+    recuadroDestello: null,
   };
 }

@@ -14,22 +14,62 @@
 | 6. Pantalla final y exportaciones | Revisada | `409ace7` traces ready, download buttons ready, no multiple downloads enabled |
 | 7. IndexedDB y sesiones guardadas | Revisada | `5e4a962` Phase 7 ready, persistent saving and config table; arreglo de «Compartir»: Sharing files enabled |
 | 8. Pulido para tablet | Construida; falta la prueba en la tablet real | Phase 8 ready, app created |
-| 9. Sincronización por tramos (lógica y script XDF) | Construida; espera revisión | `9edcb8f` first changes for tet-app LSL syncronization (más los ajustes del 2026-10-07, sin commit) |
+| 9. Sincronización por tramos (lógica y script XDF) | Revisada | `9ec5693` Phase 9 builded, piecewise LSL sync and XDF script tested with a real RM recording |
+| 10. Detección de destellos y tabla de revisión | Revisada (la detección funcionó bien con la grabación real) | Phase 10 built: automatic sync flash detection… |
 
-Pruebas: 206 de 206 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
+Pruebas: 226 de 226 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
 
-Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md.
+Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md. Las de la fase 10 también.
 
 Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`). Para retomar: dentro de `tet-video/`, `npm run dev` (el servidor no queda corriendo entre sesiones).
 
 ## Dónde quedamos (para empezar la próxima sesión)
 
-### Para retomar (2026-10-07)
+### Para retomar (2026-10-07, tarde)
 
-1. **Esperando la revisión y el mensaje de commit del investigador** para la fase 9 y los cambios de hoy. Nada de lo de hoy tiene commit.
-2. **Siguiente: fase 10**, con el método de detección nuevo del SPEC §16.4 (recuadro fijo del destello; ver «Decisiones del 2026-10-07»). Probarla con `test_files/RM.mp4`: debe dar V = 7,127; 67,143; 127,142 y 151,067 s (±1 cuadro).
-3. Sigue pendiente la prueba en la tablet Android (ver «Fase 8: lo que falta»).
-4. Más adelante: grabaciones de partidas completas (unos 5 min) y con el casco EEG, para la fase 11.
+1. **Fase 10 revisada y con commit** (2026-10-07): el investigador confirmó que la detección de destellos funciona bien.
+2. Para revisarla: `npm run dev`, cargar `test_files/RM.mp4` y el CSV hecho con `python scripts/xdf_a_eventos.py ../test_files/sub-P001_ses-S001_task-Default_run-001_beh.xdf -o eventos.csv`. Debe salir «Se encontraron los 4 destellos» con V = 7,127; 67,143; 127,142 y 151,067 s.
+3. Después: fase 11 (más grabaciones reales, partidas de 5 min y con el casco EEG; ajuste de umbrales) y la prueba en la tablet Android (ver «Fase 8: lo que falta»), que ahora incluye la detección de destellos.
+
+### Fase 10 (2026-10-07): revisada
+
+Archivos nuevos: `src/data/flash.ts` (cálculo, con pruebas en `tests/flash.test.ts`), `src/players/flashScan.ts` (recorrido del video en el navegador y visor cuadro a cuadro) y `src/screens/flashReview.ts` (tarjeta «Destellos de sincronización»). Cambios: `setup.ts` (monta la tarjeta y usa sus puntos), `state.ts` y `config.ts` (`recuadroDestello` en la configuración recordada) y `styles.css`.
+
+**Cómo funciona (SPEC §16.4 reescrito):**
+- Al tener el video y un CSV con filas sync, la tarjeta aparece y la detección arranca sola, como dice el SPEC. Hay barra de progreso y «Cancelar». Mientras se recorre a 4×, un `<video>` propio y sin sonido se ve pequeño en la tarjeta.
+- **Recorrido:** cada cuadro se reduce a 240 px de ancho y se anotan los pulsos de cada píxel: el píxel pasa a blanco casi puro (canal mínimo > 220) y vuelve en 0,1 a 0,8 s. No se guardan los cuadros, solo los pulsos.
+- **Ubicación del recuadro:** el primer intento usaba un umbral de pulsos por píxel y falló con el video real, porque las paredes blancas, al mover la cabeza, también acumulan pulsos y se unían con el destello. Lo que sí sirve: en un destello, **todos los píxeles del cuadrado empiezan su pulso en el mismo cuadro** y forman un bloque lleno y cuadrado. Se buscan esos bloques en cada cuadro, se juntan los que se repiten en el mismo lugar y se elige la zona cuyos destellos mejor coinciden con los sync (puntaje: emparejados − 0,5 × sobrantes). En la grabación real es la única zona con más de un destello.
+- **Recuadro recordado:** se prueba primero el de la configuración (`localStorage`); se usa si empareja al menos tantos destellos como el automático.
+- **Emparejamiento con los sync (`matchFlashes`):** no se hace solo por orden. Prueba cada par destello–sync como ancla y busca cada sync donde debería estar, con una tolerancia de 0,5 s más el 0,5 % de la distancia, por la deriva. Un destello que falta queda como «falta» sin correr a los demás; uno de más se ignora.
+- **Refinamiento:** alrededor de cada destello se reproduce a 0,5× (±0,5 s) y se mide el recuadro en cada cuadro. V es el `mediaTime` del primer cuadro con más del 80 % de blanco en el interior.
+- **Tabla (§16.5):** punto, LSL, video (con «aprox.» si no se pudo precisar y «a mano» si se marcó a mano), diferencia de intervalo y ritmo respecto al punto anterior incluido, y los botones «Ver»/«Marcar» y «Quitar»/«Incluir». Debajo van la línea de calidad (verde o roja) y la elección «Sincronizar con: todos los destellos, por tramos / solo el primero».
+- **Visor:** muestra el cuadro con el recuadro punteado. Tiene −1 s, ◀ cuadro, cuadro ▶ y +1 s; «Usar este cuadro para sync_k» (origen manual) y «Marcar el recuadro tocándolo» (zona blanca alrededor del toque; si el recorrido ya se hizo, empareja sin volver a recorrer el video). Los pasos de cuadro respetan la duración variable de los cuadros: hacia atrás se salta justo antes del cuadro; hacia adelante se usa el cuadro siguiente ya conocido (del refinamiento o de pasos previos) o se tantea con pasos finos.
+- **Comenzar:** no se puede mientras la detección sigue en curso, ni si, por tramos, alguna diferencia de intervalo supera 0,5 s; el mensaje remite a la tarjeta. Con «Solo el primero» siempre se puede comenzar.
+
+**Decisiones tomadas (aceptadas sin objeción; resumidas en CLAUDE.md):**
+1. La detección arranca sola al tener video y CSV con sync. El SPEC lo dice así; se preguntó si prefería un botón y no hubo respuesta. «Volver a detectar» la repite.
+2. El emparejamiento es por desfase (ver arriba), no estrictamente por orden como dice §16.2: así un destello perdido o uno de más no corren todo el emparejamiento.
+3. Hay un botón «Quitar» por punto: un sync sin destello, o uno dudoso, se puede excluir y seguir por tramos con los demás.
+4. El campo «Segundo del destello» se llena solo con el destello de la primera fila sync (redondeado a 2 decimales) y se guarda.
+5. Con una sola fila sync también se detecta, solo para llenar ese campo.
+6. Por tramos se exigen al menos 2 puntos incluidos; si no, se usa un solo destello.
+7. Si se cambia el CSV con el mismo video, se vuelve a emparejar sin recorrer el video (8 s en vez de 50 s).
+
+**Pruebas:**
+- Vitest: 226 de 226 pasan. Las nuevas de `tests/flash.test.ts` cubren el blanco, las rachas, la ubicación con movimiento y señuelo, los cuadros salteados, el destello faltante, el emparejamiento con deriva, sobrante o faltante, el recuadro tocado y `sanitizeBox`. También se prueba el recuadro en la configuración recordada.
+- Con los cuadros reales del video (OpenCV → máscaras → `flash.ts` en Node), elige el recuadro (398, 59, 69×69 px) y empareja los 4 destellos.
+- **En el navegador** (Brave sin interfaz, `npm run dev`, con `test_files/RM.mp4` y su CSV):
+  - La detección completa tarda 50 s para un video de 167 s (unos 90 s para 5 min) y da V = 7,127; 67,143; 127,142 y 151,067 s, igual que OpenCV. Calidad: diferencia máxima de 33 ms y residuo de 16,9 ms. Queda por tramos, con el campo del destello en 7,13 y el recuadro guardado.
+  - Los pasos del visor recorren exactamente los cuadros reales (67,143 → 67,187 → 67,213 → 67,255 → 67,283).
+  - Con un CSV que trae un `sync_5` de más: «4 de 5»; la fila queda como «falta» y se puede quitar.
+  - Un cuadro mal elegido a mano (1 s tarde) da una diferencia de 1005 ms en rojo, y «Comenzar» no deja empezar; con «Solo el primero» sí.
+  - Marcar el recuadro tocándolo encuentra los 4 sin volver a recorrer el video.
+  - Al cambiar el CSV con el mismo video, vuelve a emparejar en 8 s. Al quitar el CSV, la tarjeta se oculta.
+  - «Comenzar sesión» lleva a la pantalla de trazado. La consola no mostró errores.
+- Arreglado durante la prueba: los pasos de cuadro del visor (el aviso del cuadro llegaba antes de pedirlo, y saltar justo al tiempo de un cuadro mostraba el anterior) y un fallo al cambiar el CSV con el mismo video (la señal de cancelación quedaba cancelada).
+- Herramientas de la prueba, temporales y fuera del repositorio: `playwright-core` con el Brave instalado (`executablePath`) y el entorno de OpenCV ya descrito.
+
+**Falta:** probarlo en la tablet Android (rendimiento del recorrido a 4× y del visor táctil) y con más grabaciones (fase 11).
 
 ### Decisiones del 2026-10-07 (investigador)
 
@@ -136,6 +176,10 @@ Lo que se revisó:
 - `src/trace/recorder.ts`: `DimensionRecorder`, el estado de una dimensión en la pantalla de trazado (espera, grabando, terminada; valor, trazo crudo, toques, pasadas, saltos, interrupción, comprobación de «Listo» y `toRecord`). Sin DOM, con pruebas.
 - `src/trace/render.ts`: geometría compartida por la gráfica, la línea de tiempo y el deslizador (con pruebas) y su dibujo en canvas (`drawGraph`, `drawTimeline`, `drawMini`, `fitCanvas`, `readPalette`).
 - `src/data/events.ts`: lectura del CSV de eventos, `iconFor`, sincronización (`eventToVideo`, `videoToLsl`, `toVideoEvents`).
+- `src/data/sync.ts`: traducción video ↔ LSL por tramos, controles de calidad y bloque `sincronizacion` del JSON.
+- `src/data/flash.ts`: detección de destellos sin DOM (máscara de blanco, rachas, pulsos por píxel, zonas, emparejamiento con los sync, recuadro tocado).
+- `src/players/flashScan.ts`: `FlashVideo` (recorrido a 4×, refinamiento a 0,5×, visor cuadro a cuadro).
+- `src/screens/flashReview.ts`: tarjeta «Destellos de sincronización», montada dentro de `setup.ts`.
 - `src/data/export.ts`: los 4 archivos de salida (`buildAllFiles`), `fileBase`, `isoLocal`.
 - `src/data/download.ts`: `downloadFile`, `downloadBlob`, `shareableFiles` (solo los CSV), `canShareFiles`, `shareFiles` (un envío a la vez; devuelve `compartido`/`cancelado`/`ocupado`), `shareErrorMessage`.
 - `src/data/storage.ts`: IndexedDB con `idb` (`putSession`, `getSession`, `listSessions`, `deleteSession`), `requestPersistence`, y la parte pura con pruebas (`sessionId`, `toStored`, `sortSessions`, `estadoTexto`, `buildZip`, `zipName`).

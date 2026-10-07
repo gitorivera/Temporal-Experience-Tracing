@@ -13,6 +13,7 @@ describe('configuración por defecto (SPEC §6)', () => {
       practica: true,
       syncVideoS: 0,
       resolucionS: 1,
+      recuadroDestello: null,
     });
   });
 

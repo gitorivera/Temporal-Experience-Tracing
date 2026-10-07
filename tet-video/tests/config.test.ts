@@ -49,10 +49,17 @@ describe('recordar la configuración (SPEC §6)', () => {
       syncVideoS: 12.4,
       resolucionS: 0.5,
       dimensiones: [dim('Diversión')],
+      recuadroDestello: { x: 0.48, y: 0.125, w: 0.084, h: 0.15 },
     });
     saveConfig(store, cfg);
     expect([...store.data.values()][0]).not.toContain('Niño 3');
     expect(loadSavedConfig(store)).toEqual({ ...cfg, participante: '' });
+  });
+
+  it('un recuadro del destello inválido se descarta (SPEC §16.4)', () => {
+    for (const recuadroDestello of [null, 'x', { x: 0.9, y: 0, w: 0.2, h: 0.1 }, { x: 0.1, y: 0.1, w: 0, h: 0.1 }, { x: NaN, y: 0, w: 0.1, h: 0.1 }]) {
+      expect(sanitizeConfig({ recuadroDestello }).recuadroDestello).toBeNull();
+    }
   });
 
   it('un JSON dañado no impide arrancar', () => {

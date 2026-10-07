@@ -7,6 +7,7 @@ import { createDemoPlayer, DEMO_EVENTS, formatTime } from '../players/scenes';
 import { loadVideo, VideoLoadError, type VideoPlayer } from '../players/videoPlayer';
 import { APP_VERSION, configPorDefecto, setPlan, type Config, type Dimension } from '../state';
 import { mountSavedSessions } from './savedSessions';
+import { mountFlashReview } from './flashReview';
 import { enterSessionMode, exitSessionMode } from '../device';
 
 type ParsedOk = Extract<ParseResult, { ok: true }>;
@@ -39,7 +40,7 @@ export const mountSetup: MountScreen = (root, go) => {
   const cfg: Config = loadSavedConfig(store);
 
   /** Video cargado; mientras no haya, se usará la grabación de ejemplo. */
-  let video: { player: VideoPlayer; name: string } | null = null;
+  let video: { player: VideoPlayer; name: string; file: File } | null = null;
   /** Aumenta con cada archivo elegido, para ignorar cargas que terminan tarde. */
   let videoToken = 0;
   let loadingVideo = false;
@@ -114,7 +115,7 @@ export const mountSetup: MountScreen = (root, go) => {
           </div>
           <label class="field">Segundo del destello de sincronización en el video
             <input type="text" id="f-sync" inputmode="decimal" autocomplete="off">
-            <small>Segundo del video donde aparece el destello que el juego marca en LSL. Dos decimales.</small>
+            <small>Segundo del video donde aparece el destello que el juego marca en LSL. Dos decimales. Si el CSV trae filas sync, se llena solo con el destello encontrado.</small>
             <span class="status" id="sync-status" aria-live="polite"></span>
           </label>
           <label class="field">Resolución de exportación (s)
@@ -126,7 +127,8 @@ export const mountSetup: MountScreen = (root, go) => {
         <details class="sample">
           <summary>Formato del CSV de eventos</summary>
           <p>Una columna de tiempo (segundos LSL o del juego), una de etiqueta y, si se quiere, una de ícono.
-          La fila cuya etiqueta empieza por <code>sync</code> se alinea con el destello y permite calcular el tiempo LSL de cada punto del trazo.</p>
+          Las filas cuya etiqueta empieza por <code>sync</code> se alinean con los destellos del video y permiten calcular el tiempo LSL de cada punto del trazo.
+          Con varias (<code>sync_1</code>, <code>sync_2</code>, …) la sincronización se hace por tramos.</p>
           <pre>tiempo,evento,icono
 1532.40,sync,⚡
 1535.10,inicio nivel 1,🚩
@@ -134,6 +136,8 @@ export const mountSetup: MountScreen = (root, go) => {
 1590.25,error,❌</pre>
         </details>
       </div>
+
+      <div class="card" id="destellos" hidden></div>
 
       <div class="card">
         <h2>Dimensiones</h2>
@@ -288,7 +292,7 @@ export const mountSetup: MountScreen = (root, go) => {
         player.destroy();
         return;
       }
-      video = { player, name: file.name };
+      video = { player, name: file.name, file };
     } catch (err) {
       if (token !== videoToken) return;
       const msg = err instanceof VideoLoadError ? err.message : 'No se pudo leer este video.';
@@ -296,6 +300,7 @@ export const mountSetup: MountScreen = (root, go) => {
       btnComenzar.disabled = false;
       renderVideoStatus();
       setStatus(videoStatus, `${file.name}: ${msg} Mientras tanto se usará la grabación de ejemplo.`, 'error');
+      updateFlashes();
       renderEventsStatus();
       return;
     }
@@ -303,6 +308,7 @@ export const mountSetup: MountScreen = (root, go) => {
     btnComenzar.disabled = false;
     renderVideoStatus();
     readSync();
+    updateFlashes();
     renderEventsStatus();
   });
 
@@ -313,17 +319,40 @@ export const mountSetup: MountScreen = (root, go) => {
     dropVideo();
     renderVideoStatus();
     readSync();
+    updateFlashes();
     renderEventsStatus();
   });
 
   // ------------------------------------------------------------------------
   // Eventos
   // ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // Destellos de sincronización (SPEC §16.4, §16.5)
+  // ------------------------------------------------------------------------
+  const flashes = mountFlashReview($('destellos'), {
+    getBox: () => cfg.recuadroDestello,
+    setBox: (box) => {
+      cfg.recuadroDestello = box;
+      persist();
+    },
+    singleV: () => (Number.isFinite(cfg.syncVideoS) ? cfg.syncVideoS : 0),
+    onFirstFlash: (v) => {
+      fSync.value = num(roundSync(v), 2);
+      readSync();
+      persist();
+    },
+    onChange: () => renderEventsStatus(),
+  });
+  /** Avisa a la tabla de destellos del video y las filas sync actuales. */
+  const updateFlashes = () => flashes.setInputs(video?.file ?? null, events?.result.syncs ?? []);
+
   /**
-   * Un solo destello, el del campo de configuración, emparejado con la primera fila sync.
-   * La detección de varios destellos (SPEC §16.4) llega en la fase 10.
+   * Por tramos, si la tabla de destellos tiene al menos dos puntos y se eligió así; si no, un solo
+   * destello: el del campo de configuración, emparejado con la primera fila sync.
    */
   const currentSync = (): Sync => {
+    const puntos = events ? flashes.points() : null;
+    if (puntos) return syncFromPoints(puntos);
     const videoS = Number.isFinite(cfg.syncVideoS) ? cfg.syncVideoS : 0;
     const first = events?.result.sync;
     return first
@@ -346,7 +375,12 @@ export const mountSetup: MountScreen = (root, go) => {
         : 'sin fila de sincronización: los tiempos se toman como segundos desde el destello y no habrá tiempo LSL',
     );
     if (r.syncs.length > 1) {
-      parts.push(`${r.syncs.length} filas de sincronización; por ahora se usa solo la primera (la detección de varios destellos llega en la fase 10)`);
+      const puntos = video ? flashes.points() : null;
+      parts.push(
+        puntos
+          ? `${r.syncs.length} filas de sincronización; se sincroniza por tramos con ${puntos.length} destellos`
+          : `${r.syncs.length} filas de sincronización; se usa solo la primera (ver «Destellos de sincronización»)`,
+      );
     }
     if (r.skipped > 0) parts.push(`${r.skipped} ${r.skipped === 1 ? 'fila descartada' : 'filas descartadas'} por no tener un tiempo numérico`);
     let text = parts.join(' · ') + '.';
@@ -355,7 +389,7 @@ export const mountSetup: MountScreen = (root, go) => {
     if (video) {
       const inside = toVideoEvents(r.events, currentSync(), video.player.duration).length;
       const outside = r.events.length - inside;
-      text += ` Con el destello en ${num(currentSync().videoS, 2)} s, ${inside} de ${r.events.length} caen dentro del video`;
+      text += ` Con ${flashes.points() ? 'los destellos detectados' : `el destello en ${num(currentSync().videoS, 2)} s`}, ${inside} de ${r.events.length} caen dentro del video`;
       text += outside > 0 ? ` (${outside} fuera; se descartan).` : '.';
       if (inside === 0 && r.events.length > 0) kind = 'warn';
     } else {
@@ -370,6 +404,7 @@ export const mountSetup: MountScreen = (root, go) => {
     fEventos.value = '';
     if (!file) return;
     events = null;
+    updateFlashes();
     let text: string;
     try {
       text = await file.text();
@@ -385,11 +420,13 @@ export const mountSetup: MountScreen = (root, go) => {
       return;
     }
     events = { name: file.name, result };
+    updateFlashes();
     renderEventsStatus();
   });
 
   fEventosQuitar.addEventListener('click', () => {
     events = null;
+    updateFlashes();
     setStatus(eventosStatus, '');
     renderEventsStatus();
   });
@@ -495,9 +532,10 @@ export const mountSetup: MountScreen = (root, go) => {
     readSync();
     readResolucion();
     const v = validateConfig(cfg);
-    if (!v.ok) {
+    const syncErrors = video ? flashes.startErrors() : [];
+    if (!v.ok || syncErrors.length > 0) {
       errores.replaceChildren(
-        ...v.errors.map((msg) => {
+        ...[...(v.ok ? [] : v.errors), ...syncErrors].map((msg) => {
           const li = document.createElement('li');
           li.textContent = msg;
           return li;
@@ -554,6 +592,7 @@ export const mountSetup: MountScreen = (root, go) => {
 
   return () => {
     unmountSessions();
+    flashes.destroy();
     disarmRestore();
     videoToken++;
     if (!handedOff) dropVideo();

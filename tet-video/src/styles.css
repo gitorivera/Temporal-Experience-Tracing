@@ -451,6 +451,74 @@ button {
   color: var(--danger);
 }
 
+/* Destellos de sincronización (SPEC §16.4, §16.5) */
+.error-text {
+  color: var(--danger);
+}
+.fr-actions {
+  margin: 10px 0;
+}
+#fr-progress {
+  width: min(320px, 100%);
+}
+.fr-preview video {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  border-radius: var(--radius-s);
+  margin-bottom: 10px;
+}
+.fr-table tr.excluded td {
+  opacity: 0.5;
+}
+.fr-mode {
+  border: 0;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.fr-mode legend {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.fr-viewer {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.fr-viewer h3 {
+  margin: 0 0 8px;
+}
+.fr-stage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 10px;
+}
+.fr-stage video {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: var(--radius-s);
+}
+.fr-stage.marking {
+  cursor: crosshair;
+}
+.fr-box {
+  position: absolute;
+  outline: 2px dashed var(--danger);
+  outline-offset: 2px;
+  pointer-events: none;
+}
+.fr-steps {
+  margin-bottom: 8px;
+}
+.fr-time {
+  min-width: 7ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 /* Pantalla final (SPEC §11) */
 .done .thanks {
   text-align: center;

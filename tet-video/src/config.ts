@@ -1,5 +1,6 @@
 // Lógica de la pantalla de configuración (SPEC §6), sin DOM para poder probarla:
 // recordar la configuración entre sesiones, validarla y ordenar las dimensiones.
+import { sanitizeBox } from './data/flash';
 import { configPorDefecto, type Condicion, type Config, type Dimension, type ModoRespuesta, type Velocidad } from './state';
 
 const STORAGE_KEY = 'tet-video:config';
@@ -55,6 +56,7 @@ export function sanitizeConfig(raw: unknown): Config {
     syncVideoS: sync,
     resolucionS: res,
     dimensiones: dims.length > 0 ? dims : d.dimensiones,
+    recuadroDestello: sanitizeBox(r.recuadroDestello),
   };
 }
 
