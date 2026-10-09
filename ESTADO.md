@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-07 (cierre del día).
+Última actualización: 2026-10-09 (versión actual publicada en GitHub Pages).
 
 ## Fases (SPEC §12)
 
@@ -35,7 +35,7 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 **Etapas que faltan** (en el orden sugerido):
 
-1. **Publicar la versión actual en GitHub Pages.** La publicada en https://gitorivera.github.io/tet-app/ es la del commit `67840db` (fase 8): no tiene la sincronización por tramos, la detección de destellos, la ventana ni el filtro de eventos. Se publica con `bash scripts/deploy-pages.sh` dentro de `tet-video/` (exige no tener cambios sin commit). Es lo primero, porque la prueba en la tablet se hace desde ahí.
+1. ~~Publicar la versión actual en GitHub Pages.~~ **Hecho el 2026-10-09:** https://gitorivera.github.io/tet-app/ sirve el commit `a4749b5` (con sincronización por tramos, detección de destellos, ventana y filtro de eventos). Antes de publicar pasaron las 247 pruebas, las 11 de Python y el build, en el computador Windows del investigador (Node 24.19). Ojo: las pruebas de Python dejan `scripts/__pycache__/`, que hace fallar el script de publicación por «cambios sin commit»; por eso `__pycache__/` quedó en el `.gitignore` de la raíz. Ese mismo día, por decisión del investigador, `test_files/` salió del `.gitignore` y se sube al repositorio privado (CLAUDE.md, cambio 6). `test_files/xdf_a_eventos.py` es una copia (idéntica el 2026-10-09) que el investigador decidió conservar; la versión que se mantiene y se prueba es `tet-video/scripts/xdf_a_eventos.py`.
 2. **Fase 8, prueba en la tablet Android** (ver «Fase 8: lo que falta»): instalar como app, sin conexión, el tacto en ambos modos, la rotación, un MP4 y un WebM, un video muy corto y uno muy largo, y abrir los CSV. Ahora también: que la detección de destellos a 4× sea rápida en la tablet (en el computador, 50 s para 167 s de video), que el visor cuadro a cuadro y el marcado del recuadro funcionen con el dedo, y que la ventana de trazado arranque y termine bien.
 3. **Fase 11, más grabaciones reales de la Quest:** una partida completa de unos 5 minutos (6 o 7 destellos) para confirmar la detección, ver si aparece deriva o saltos en grabaciones más largas y ajustar los umbrales si hace falta (blanco > 220, racha > 80 %, 0,1 a 0,8 s, tolerancia del emparejamiento). Conviene probar también con poca luz y con escenas muy blancas.
 4. **Con el casco EEG operativo:** grabar en LabRecorder el EEG y `JuegoEventos` juntos y comprobar con `pyxdf` que quedan en el mismo reloj (GAME-SPECS §8, punto 1). Hoy solo se probó el stream de marcadores.

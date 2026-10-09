@@ -21,7 +21,7 @@ Prevalecen sobre el texto del SPEC:
 
 4. **Detección de destellos por el recuadro fijo del destello** (SPEC §16.4 reescrito, 2026-10-07), no por la cuadrícula de 8×6. Ver ESTADO.md.
 5. **El stream del XDF es `JuegoEventos`;** `ColorQuestMarkers` se ignora. `scripts/xdf_a_eventos.py` usa `JuegoEventos` por omisión.
-6. **`test_files/` es solo para pruebas locales** (video de la Quest y XDF): está en `.gitignore` y nunca se sube.
+6. **`test_files/` se sube al repositorio privado** (cambiado el 2026-10-09; antes estaba en `.gitignore`): guarda el video de la Quest, el XDF y su CSV de eventos para las pruebas. Nunca va a la publicación de GitHub Pages (`deploy-pages.sh` solo copia `dist/`).
 7. **Ventana de trazado (recorte virtual, SPEC §16.8, 2026-10-07):** el niño ve y traza solo del destello de la primera fila sync al de la última; el archivo de video no cambia. Los CSV de las dimensiones tienen solo las filas de la ventana (tiempos en el reloj del video y de LSL); el JSON agrega `ventana` e `inicio_s` por dimensión. El fin nunca pasa del último cuadro, y la duración es múltiplo de 0,1 s.
 
 Decisiones de la fase 2 aceptadas sin objeción:
