@@ -29,6 +29,8 @@ trap 'rm -rf "$TMP"' EXIT
 cp -R dist/. "$TMP/"
 # Sin Jekyll: GitHub Pages sirve los archivos tal cual.
 touch "$TMP/.nojekyll"
+# README del repositorio público (inglés y español) y la licencia MIT.
+cp pages/README.md pages/README.es.md ../LICENSE "$TMP/"
 
 cd "$TMP"
 git init -q -b "$BRANCH"
