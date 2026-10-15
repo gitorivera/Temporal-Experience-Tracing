@@ -43,7 +43,7 @@ La app empareja los destellos con los marcadores por orden y comprueba que los i
 - **Cuadrado blanco puro** (`#FFFFFF`) de unos **8° de ángulo visual**, con un **marco negro** de alrededor de 1°. El marco garantiza contraste aunque la escena sea clara.
 - **Fijo a la cabeza** (head-locked): se mueve con la vista, para que siempre salga en la grabación.
 - **Arriba del centro**, unos 10° por encima de la línea de la mirada. **No en una esquina:** la transmisión de la Quest al celular recorta los bordes de la imagen de cada ojo, y un destello en la esquina podría no salir en el video.
-- **Encima de todo:** sin profundidad (en Unity, un shader *unlit* con `ZTest Always` y una cola de render alta), sin niebla, sin post-procesado ni efectos que cambien su brillo.
+- **Encima de todo:** sin profundidad (en Unity, un shader *unlit* con `ZTest Always` y una cola de render alta), sin niebla, sin post-procesado ni efectos que cambien su brillo. En URP, además, el orden de dibujo (`sortingOrder`) máximo, porque se compara antes que la cola. Ningún texto ni elemento nuevo debe aparecer en el cuadro del destello: en la prueba exp006 (2026-10-14) el «Puntaje total» de la pantalla final salió encima del último destello, y ahora se muestra cuando el destello se apaga.
 - **300 ms de duración.** El celular graba la transmisión a unos 30 cuadros por segundo, así que 300 ms son unos 9 cuadros: alcanza para detectarlo aunque se pierdan algunos.
 - Aparece y desaparece de golpe, sin fundidos, para que su inicio sea un cuadro preciso.
 

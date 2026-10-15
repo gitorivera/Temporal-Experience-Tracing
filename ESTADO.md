@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-09 (versión actual publicada en GitHub Pages).
+Última actualización: 2026-10-14 (versión actual publicada en GitHub Pages).
 
 ## Fases (SPEC §12)
 
@@ -23,9 +23,59 @@ Pruebas: 247 de 247 pasan (`npm test`); las 11 del script Python también (`pyth
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md. Las de la fase 10 también.
 
+Aviso de la coma decimal (CLAUDE.md, cambio 3): ya está hecho, desde la fase 4. Verificado el 2026-10-14 en el código: `#aviso-coma` en `src/screens/setup.ts`, junto al campo del CSV de eventos y siempre visible, con el estilo `.notice.warn`. No hay nada pendiente.
+
 Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/homebrew/bin`). Para retomar: dentro de `tet-video/`, `npm run dev` (el servidor no queda corriendo entre sesiones).
 
 ## Dónde quedamos (para empezar la próxima sesión)
+
+### Para retomar (2026-10-15): construir el análisis de EEG con los marcadores LSL
+
+**Mañana se empieza la aplicación de análisis de EEG** (plan abajo, «Plan del análisis de EEG»). Primero hay que responder las preguntas abiertas del plan; después se construye por fases, deteniéndose al final de cada una para la revisión, como con la app TET.
+
+### Prueba exp006 con el casco de RV y OpenBCI (2026-10-14)
+
+Archivos en `test_files/exp006/`: `RMexp6.mp4` (video de la Quest) y `block_Default.xdf` (LabRecorder). El investigador aclaró que **el EEG era de prueba: OpenBCI enviaba el stream sin electrodos conectados**, así que la calidad de la señal no se evalúa en esta prueba.
+
+- **Marcadores (`JuegoEventos`): bien.** 136 eventos: 4 `sync` (a 60,003 s, 59,999 s y 13,653 s uno de otro), inicio de partida, niveles 1 a 5, 91 aciertos, 30 premios, 4 errores y fin de partida. Coinciden con `ColorQuestMarkers`. Deriva del reloj de la Quest frente al computador: unos 2,5 ms en 3 min.
+- **Video: bien.** 848×480, 29,99 cuadros/s efectivos, duración de cuadro variable (el salto más largo es de 60 ms). Destellos en el mismo recuadro que en RM.mp4 (399, 58): V = 41,23; 101,22; 161,21 y 174,89 s. Diferencias de intervalo −13, −9 y +27 ms; ritmo 0,99978, 0,99985 y 1,00198; residuo de la recta 14,5 ms. Todo por debajo de un cuadro: sin deriva ni saltos.
+- **EEG (`eeg_stream`, OpenBCI GUI, 8 canales float32 a 250 Hz):** el tiempo está bien: 180 s sin huecos ni muestras perdidas, cubre toda la partida (empieza 7,7 s antes de `sync_1`), ritmo efectivo 250,21 Hz (en el análisis hay que usar los tiempos LSL, no contar muestras), y los tiempos crudos oscilan ±15 ms (pyxdf los corrige). La señal tiene un nivel común de unos −157 mV que deriva (correlación 0,998 entre canales en crudo): es lo esperable sin electrodos. El XDF no trae los nombres de los canales.
+- **Problema encontrado: el texto «Puntaje total: 300» de la pantalla final salía encima del último destello** (blanco del recuadro: 80 % en vez de 89 %; con el margen interior que usa la app, 91 %, así que se detectaba, pero con poco margen).
+
+**Arreglo en el juego** (repositorio aparte `ColorQuest`, commit del 2026-10-14):
+- `SyncFlash.cs`: los dos cuadrados del destello llevan el `sortingOrder` máximo (32766 y 32767). URP ordena lo transparente primero por capa y orden de dibujo, después por cola; así el destello se dibuja después de cualquier texto o partícula. Expone `DuracionSegundos`.
+- `GameController.cs`: el «Puntaje total» se muestra con una corrutina (`MostrarPuntajeFinal`) 0,1 s después de que se apaga el último destello, en vez de en el mismo cuadro.
+- No se pudo compilar ni probar en la Quest desde aquí: **falta compilar el juego, grabar una partida y comprobar que el último destello sale limpio** (blanco del recuadro cerca de 89 %, como los otros).
+- GAME-SPECS §3.2 dice ahora que ningún texto debe aparecer en el cuadro del destello.
+
+### Plan del análisis de EEG (propuesta del 2026-10-14, por aprobar)
+
+**Objetivo:** con el XDF de LabRecorder (EEG + `JuegoEventos`) y los archivos de TET, calcular el índice de engagement del EEG en ventanas de tiempo (SPEC §1), verlo junto a los eventos del juego y a las trazas del niño, y exportar tablas para la estadística (RM frente a Tablet).
+
+**Propuesta técnica:** una herramienta en **Python** dentro de este repositorio, en una carpeta nueva `tet-eeg/` (aparte de `tet-video/`, que es la PWA de la tablet). Motivos: corre en el computador del investigador, `pyxdf` ya se usa en `scripts/xdf_a_eventos.py`, y Python tiene las herramientas de señal (NumPy, SciPy; MNE opcional). Biblioteca + línea de comandos (`python -m tet_eeg ...`), pruebas con `pytest` sobre señales sintéticas, y un informe HTML por sesión. Importante: cargar el XDF con las mismas opciones de pyxdf que `xdf_a_eventos.py` (sincronización de relojes activada), para que el EEG quede en el mismo reloj que los `tiempo_lsl_s` de TET.
+
+**Fases propuestas:**
+
+| Fase | Qué hace | Resultado |
+|---|---|---|
+| E1. Carga y verificación | Lee el XDF; encuentra el stream EEG y `JuegoEventos`; revisa huecos, ritmo efectivo, desfase de relojes, que el EEG cubra de `sync_1` a `sync_N`, saturación (±187,5 mV en el Cyton), ruido de 60 Hz y canales planos, desconectados o sin electrodos (como exp006). | Informe de integridad (lo que se hizo a mano el 2026-10-14) |
+| E2. Preprocesamiento | Filtro pasa-altos de 1 Hz, notch de 60 Hz (y 120), pasa-banda, re-referencia; marca canales malos y ventanas con artefactos (umbral de amplitud). | Señal limpia y máscara de ventanas válidas |
+| E3. Índice de engagement | Potencia por bandas (θ 4–8, α 8–13, β 13–30 Hz) con Welch en ventanas deslizantes; índice β/(α+θ) (Pope et al., 1995), por canal y promedio de los canales elegidos. | Serie del índice en tiempo LSL |
+| E4. Segmentación por el juego | Recorta la partida (`sync_1` a `sync_N`); índice por nivel; épocas alrededor de aciertos, errores, premios e inicios de nivel. | Tablas por nivel y por evento |
+| E5. Unión con TET | Lee `_10hz.csv` y `_ventanas.csv` (columna `tiempo_lsl_s`), lleva el índice a la misma rejilla, y calcula la correlación por dimensión (Spearman, con desfases de ±algunos segundos). | Tabla por participante y dimensión |
+| E6. Informe | HTML por sesión: calidad, índice del EEG, trazas de TET y eventos del juego en un mismo eje de tiempo. | `informe_{participante}.html` |
+| E7. Lote | Procesa una carpeta con varias sesiones; tabla de grupo en formato largo para la estadística (RM frente a Tablet). | CSV de grupo |
+
+**Preguntas abiertas para el investigador (responder antes de empezar):**
+1. ¿Python en el computador (recomendado) o dentro de la PWA? La PWA corre en la tablet y no está pensada para procesar EEG.
+2. Montaje: ¿qué posición tiene cada uno de los 8 canales del Cyton, dónde van la referencia (SRB) y la tierra (BIAS)? Convendría poner los nombres en OpenBCI GUI para que el XDF los guarde.
+3. Índice de engagement: ¿β/(α+θ) de Pope et al. (1995), u otro? ¿Qué canales? ¿Qué ventana y paso (por ejemplo 2 s con paso de 1 s, o la ventana larga de Pope)?
+4. ¿Se graba una línea base (reposo con ojos abiertos/cerrados) antes de jugar, para normalizar el índice? Si sí, ¿cómo se marca en LSL?
+5. ¿OpenBCI GUI envía por LSL la señal cruda («TimeSeries Raw», como en exp006) o filtrada? El análisis supone cruda.
+6. ¿Qué tablas necesita para la estadística y con qué programa la hará (R, SPSS, Python)?
+7. ¿MNE-Python como dependencia (más completo, pesado) o solo NumPy y SciPy (liviano)?
+
+**Datos de prueba:** `test_files/exp006/` sirve para E1 (tiempo y marcadores) pero no para la señal (sin electrodos). Para E2 y E3 hacen falta señales sintéticas en las pruebas y, cuando se pueda, una grabación con electrodos puestos (idealmente con un tramo de ojos cerrados, que debe subir la banda alfa: así se comprueba el cálculo).
 
 ### Para retomar (2026-10-08)
 
@@ -38,7 +88,7 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 1. ~~Publicar la versión actual en GitHub Pages.~~ **Hecho el 2026-10-09:** https://gitorivera.github.io/tet-app/ sirve el commit `a4749b5` (con sincronización por tramos, detección de destellos, ventana y filtro de eventos). Antes de publicar pasaron las 247 pruebas, las 11 de Python y el build, en el computador Windows del investigador (Node 24.19). Ojo: las pruebas de Python dejan `scripts/__pycache__/`, que hace fallar el script de publicación por «cambios sin commit»; por eso `__pycache__/` quedó en el `.gitignore` de la raíz. Ese mismo día, por decisión del investigador, `test_files/` salió del `.gitignore` y se sube al repositorio privado (CLAUDE.md, cambio 6). `test_files/xdf_a_eventos.py` es una copia (idéntica el 2026-10-09) que el investigador decidió conservar; la versión que se mantiene y se prueba es `tet-video/scripts/xdf_a_eventos.py`.
 2. **Fase 8, prueba en la tablet Android** (ver «Fase 8: lo que falta»): instalar como app, sin conexión, el tacto en ambos modos, la rotación, un MP4 y un WebM, un video muy corto y uno muy largo, y abrir los CSV. Ahora también: que la detección de destellos a 4× sea rápida en la tablet (en el computador, 50 s para 167 s de video), que el visor cuadro a cuadro y el marcado del recuadro funcionen con el dedo, y que la ventana de trazado arranque y termine bien.
 3. **Fase 11, más grabaciones reales de la Quest:** una partida completa de unos 5 minutos (6 o 7 destellos) para confirmar la detección, ver si aparece deriva o saltos en grabaciones más largas y ajustar los umbrales si hace falta (blanco > 220, racha > 80 %, 0,1 a 0,8 s, tolerancia del emparejamiento). Conviene probar también con poca luz y con escenas muy blancas.
-4. **Con el casco EEG operativo:** grabar en LabRecorder el EEG y `JuegoEventos` juntos y comprobar con `pyxdf` que quedan en el mismo reloj (GAME-SPECS §8, punto 1). Hoy solo se probó el stream de marcadores.
+4. **Con el casco EEG operativo:** grabar en LabRecorder el EEG y `JuegoEventos` juntos y comprobar con `pyxdf` que quedan en el mismo reloj (GAME-SPECS §8, punto 1). **Avance del 2026-10-14 (exp006):** el EEG y los marcadores quedan en el mismo reloj y el EEG cubre toda la partida; falta repetirlo con los electrodos puestos.
 5. **Lista de comprobación antes del piloto** (GAME-SPECS §8): con los puntos 2 a 5 ya vistos en la prueba de RM y el 6 cubierto por la fase 10, quedan el 1 (EEG) y repetirla completa con el montaje final.
 6. **Versión de tablet del juego** (condición «Tablet»): aún no existe. GAME-SPECS §6.2 tiene las recomendaciones (grabación de pantalla, el mismo destello arriba al centro). Cuando exista, probar la detección con esa grabación.
 7. **Piloto con niños.**
