@@ -1,2 +1,4 @@
 # Caché de Python (la dejan las pruebas de scripts/): si queda sin seguimiento, deploy-pages.sh no publica.
 __pycache__/
+# Grabaciones de los experimentos: se quedan solo en el computador del investigador.
+test_files/exp*/
