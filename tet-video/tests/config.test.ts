@@ -56,6 +56,11 @@ describe('recordar la configuración (SPEC §6)', () => {
     expect(loadSavedConfig(store)).toEqual({ ...cfg, participante: '' });
   });
 
+  it('recuerda el modo botones; un modo desconocido vuelve al de por defecto', () => {
+    expect(sanitizeConfig({ modo: 'botones' }).modo).toBe('botones');
+    expect(sanitizeConfig({ modo: 'joystick' }).modo).toBe(configPorDefecto().modo);
+  });
+
   it('un recuadro del destello inválido se descarta (SPEC §16.4)', () => {
     for (const recuadroDestello of [null, 'x', { x: 0.9, y: 0, w: 0.2, h: 0.1 }, { x: 0.1, y: 0.1, w: 0, h: 0.1 }, { x: NaN, y: 0, w: 0.1, h: 0.1 }]) {
       expect(sanitizeConfig({ recuadroDestello }).recuadroDestello).toBeNull();

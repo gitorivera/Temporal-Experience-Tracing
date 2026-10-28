@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Última actualización: 2026-10-14 (versión actual publicada en GitHub Pages).
+Última actualización: 2026-10-28 (la versión publicada en GitHub Pages aún no tiene el modo botones ni el resultado de la práctica).
 
 ## Fases (SPEC §12)
 
@@ -19,7 +19,7 @@
 | 10b. Ventana de trazado (recorte virtual, SPEC §16.8) | Revisada (decisiones aceptadas) | `4b5964b` Video length adjusted to avoid off game experience tracing |
 | 10c. Eventos que ve el niño y arreglo de las filas de dimensiones | Revisada (todo funcionó bien) | Child timeline shows only hit combos, prizes and level starts; dimension rows fit the card |
 
-Pruebas: 247 de 247 pasan (`npm test`); las 11 del script Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
+Pruebas: 254 de 254 pasan (`npm test`); las 41 de los scripts Python también (`python -m unittest discover -s scripts -p "test_*.py"`). El chequeo de tipos y el build no dan errores.
 
 Las decisiones aceptadas de las fases 2, 4, 5, 6 y 7 están en CLAUDE.md. Las de la fase 10 también.
 
@@ -29,9 +29,43 @@ Entorno: en el Mac del investigador, Node.js v26 instalado con Homebrew (`/opt/h
 
 ## Dónde quedamos (para empezar la próxima sesión)
 
+### Modo botones y resultado de la práctica (2026-10-28): construido, espera revisión
+
+Decisión del investigador: el video de la Quest y los streams LSL se capturan en el mismo computador, y el niño traza ahí mismo (sin pasar archivos a la tablet). Para eso:
+
+- **Modo de respuesta nuevo «Botones ▲ ▼ o flechas del teclado»** (`modo: 'botones'` en la configuración, el JSON y la columna `modo` de los CSV). Hay dos botones grandes ▲ ▼ a la derecha de la gráfica (mouse o dedo) y además las flechas ↑ ↓ del teclado. Mientras están pulsados, la línea sube o baja a velocidad constante: 0,5 por segundo, de abajo arriba en 2 s, con el tiempo real entre cuadros y un tope de 0,1 s por cuadro para que no salte tras un tirón. Al soltar, el valor se queda. Con ▲ y ▼ a la vez no se mueve. Cada pulsación nueva cuenta como toque; la repetición automática de la tecla no cuenta. La gráfica no responde al tacto en este modo, y antes de «Empezar» los botones se ven apagados. Lógica sin DOM en `src/trace/hold.ts`; el texto de la instrucción cambia según el modo.
+- **Pantalla del resultado de la práctica:** al pulsar «Listo» en la práctica aparece «Resultado de la práctica», con la línea del niño sobre la velocidad real de la pelota (punteada), la r con su frase en verde, ámbar o rojo (mismos umbrales: `correlationLevel` en `src/summary.ts`) y dos botones: «↺ Repetir la práctica» (vuelve a la tarjeta de la práctica) y «Seguir con las preguntas». Al repetir, el intento anterior sigue guardado hasta que el nuevo lo reemplaza; `pasadas` y `saltos_video` se suman entre intentos, mientras `toques` y el tiempo de respuesta son los del último intento.
+- Pruebas: 254 de 254 en Vitest (7 nuevas: `tests/hold.test.ts`, el nivel de correlación y el modo en la configuración); 41 de Python. Build sin errores. En el navegador (sin errores en la consola): el investigador trazó la práctica con clics en ▲ ▼ y salió la pantalla del resultado con r = 0,67 «buena»; con las flechas, ↑ 0,6 s subió la línea 0,3 en rampa; «Repetir la práctica» volvió a la tarjeta con «▶ Empezar», y tras el segundo intento la práctica quedó guardada en IndexedDB con 2 pasadas.
+- **Velocidad por dimensión** (pedido tras la primera revisión): el investigador elige 1×, 1,5× o 2× en la tarjeta de inicio de cada dimensión (sobre «¡Vamos!») o en las opciones del investigador (mantener pulsado el indicador «2 de 4»). Vale desde la próxima pasada y sigue en las dimensiones siguientes. Cada dimensión guarda la velocidad de la pasada que quedó: en el JSON, `velocidad_reproduccion` por dimensión y en la práctica (clave nueva, después de `modo`); `configuracion.velocidad_reproduccion` sigue siendo la inicial. La tabla de la pantalla final tiene una columna «Velocidad», y la ficha dice «Velocidad inicial». Las sesiones guardadas antes usan la velocidad de la sesión. Los CSV no cambian. Más lentas que 1× no hay; se pueden agregar.
+- **Reinicio total sin guardar:** en las opciones del investigador, «↺ Reiniciar todo sin guardar», con confirmación en dos toques. Borra de IndexedDB lo ya guardado de esa sesión (práctica y dimensiones terminadas, después de los guardados pendientes) y empieza de nuevo desde la práctica (o la primera dimensión), con el mismo participante, video y orden, una hora de inicio nueva y la velocidad de la configuración. Si el borrado falla, solo queda en la consola, y la sesión vieja se puede borrar de la tabla de sesiones guardadas.
+- Pruebas: 254 de 254 en Vitest, con la velocidad por dimensión en la exportación y en la tabla final; build sin errores. La velocidad por dimensión y el reinicio **no se han probado en el navegador**: el investigador los prueba y avisa.
+- Falta: probarlo en el computador de la captura, con el video real de la Quest.
+
 ### Para retomar (2026-10-15): construir el análisis de EEG con los marcadores LSL
 
 **Mañana se empieza la aplicación de análisis de EEG** (plan abajo, «Plan del análisis de EEG»). Primero hay que responder las preguntas abiertas del plan; después se construye por fases, deteniéndose al final de cada una para la revisión, como con la app TET.
+
+### Prueba exp007 con electrodos puestos (2026-10-15)
+
+Archivos en `test_files/exp007/` (ignorados por git desde el 2026-10-15): `RMexp007.mp4`, `block_Default.xdf`, `block_Default_eventos.csv` y `traces/` (TET de P007, trazado en la laptop de LabRecorder, no en la tablet).
+
+- **Marcadores:** 86 en `JuegoEventos` (4 `sync`, 5 niveles, 55 aciertos, 18 premios, 2 errores), iguales a `ColorQuestMarkers` y al CSV. Partida de 138,8 s.
+- **EEG, tiempo:** sin huecos, 250,04 Hz efectivos, jitter crudo de 7 ms (máx. 19 ms; pyxdf lo corrige), cubre de 6,6 s antes de `sync_1` a 15,6 s después de `sync_4`.
+- **EEG, señal:** ya parece EEG real (con 1 Hz pasa-altos, 13–24 µV RMS; desfase DC de 31–61 mV, lejos de saturar). Problemas: 60 Hz de 11–13 µV RMS en todos los canales (hace falta notch); correlación alta entre canales (0,6–0,9: ruido común o movimiento); delta del 55–67 % (movimiento/ojos); **canal 8** (y en parte el 7) con mucha β/γ (EMG o mal contacto): 53 % de las ventanas de 1 s pasan de 100 µV pico a pico. El XDF sigue sin nombres de canales.
+- **Video:** 832×464 (no 848×480 como exp006), 30,00 cuadros/s, sin saltos de más de 48 ms. Recuadro del destello cerca de (430, 95). Destellos en V = 2,767; 62,817; 122,797 y 141,597 s; diferencias de intervalo +35, −21 y −1 ms; residuo de la recta 21 ms. **En todos los destellos aparece el puntaje del juego (p. ej. «50», «180») dentro del recuadro**: el blanco baja a 80–88 %; el último destello queda justo en el umbral de 80 %.
+- **TET: la laptop usó una versión vieja de la app** (el JSON no trae `ventana` ni `inicio_s` y la sincronización es solo `video_s: 0, lsl_s: 2845.632`). Con `video_s: 0`, toda la columna `tiempo_lsl_s` está corrida **+2,767 s**, y el niño trazó el video completo (148,7 s), incluidos 2,8 s antes y 7 s después de la partida. `tiempo_video_s` sí está bien, así que se puede corregir: `lsl = 2845.632 + (tiempo_video_s − 2.767)`. El investigador decidió no generar todavía los CSV corregidos.
+- **Pendiente en el juego:** el puntaje en curso se dibuja encima del destello; revisar si el arreglo de `sortingOrder` (ColorQuest, 2026-10-14) llegó a la Quest o no funciona.
+- **Mover archivos sin redes sociales** (WhatsApp recomprime el video si no se envía como documento; el CSV se elige desde el campo de TET, no se «abre»). Opciones dadas: grabar la Quest en la laptop con `scrcpy --record` por USB; trazar en la laptop (mejor si es táctil); memoria USB doble (USB-C y USB-A); red local sin internet con el punto de acceso del celular y LocalSend; cable USB.
+
+### Script de integridad de capturas (2026-10-15): construido, espera revisión
+
+`tet-video/scripts/integridad.py <carpeta>` revisa una captura y guarda `<carpeta>/integridad.txt` con marcas [OK], [AVISO] y [ERROR] (sale con código 1 si hay errores). Revisa: marcadores de `JuegoEventos` (tipos, sync, coincidencia con `ColorQuestMarkers` y con el CSV de eventos); EEG (ritmo efectivo, huecos, jitter, que cubra la partida, nombres de canales, saturación, canales planos, «sin electrodos» por correlación en crudo, ruido de red, bandas, ventanas de 1 s con más de 100 µV); video con OpenCV (cuadros perdidos, ubica el recuadro del destello por el ritmo de los sync, empareja destellos con sync como la app, avisa si el blanco no llega al 85 %, diferencias de intervalo y residuo); y TET (CSV presentes, versión vieja sin `ventana`, desfase entre `video_s` y el destello detectado, con la fórmula de corrección, ventana, práctica y cobertura). Requiere `numpy`, `pyxdf` y, para el video, `opencv-python-headless` (instalado el 2026-10-15 en el Windows del investigador). Sin SciPy: los filtros son por FFT, suficientes para medir. 18 pruebas nuevas en `scripts/test_integridad.py` (29 en total con las de `xdf_a_eventos.py`). Probado con exp001 a exp007: da lo mismo que el análisis a mano de exp006 y exp007; exp001 tiene vacío el stream de marcadores, y en exp002 y exp004 todos los canales saturan (sin electrodos).
+
+### Script de corrección de sesiones TET (2026-10-15): construido, espera revisión
+
+`tet-video/scripts/corregir_tet.py <carpeta>` rehace la sincronización de sesiones TET ya exportadas y recalcula `tiempo_lsl_s` desde `tiempo_video_s` (que no cambia), con la misma lógica que `src/data/sync.ts`: por tramos con 2 o más destellos, desfase fijo con uno (`--modelo primero`). Los destellos salen del video (con la detección de `integridad.py`), de `--destellos 2.767,62.817,-,141.597` (a mano, `-` si falta) o de `--desfase S` (solo mueve `video_s`). Las filas sync salen del CSV de eventos o, si no hay, del XDF. Rehace en el JSON el bloque `sincronizacion` (v2), los tiempos de `eventos` en el video y `inicio_s` por dimensión, y agrega un bloque **`correccion`** (fecha, motivo, sincronización original, si se recortó; clave nueva, solo en las copias corregidas). Con `--recortar` deja solo la partida como la ventana de trazado (§16.8): filtra filas de dimensiones y toques, recorta `valores_10hz` y `trazo_crudo`, y rehace `_ventanas.csv` desde la primera fila conservada (no interpola). Nunca toca los originales: escribe en `<carpeta del JSON>/corregido/` con los mismos nombres y formatos (CSV con BOM y CRLF, JSON sin BOM y con LF) y agrega el registro a `correccion.txt`. Si el cambio es menor de un cuadro no escribe (salvo `--recortar` o `--forzar`). 12 pruebas en `scripts/test_corregir_tet.py` (41 en total). `integridad.py` ahora expone `destellos()` y `fin_video()` para reutilizarlos.
+
+**exp007 corregido** (sin recortar) en `test_files/exp007/traces/corregido/`: por tramos con los 4 destellos; `tiempo_lsl_s` baja entre 2,765 y 2,802 s; `integridad.py` da [OK] a la copia corregida. Lo que no se puede corregir: durante la sesión, los iconos de la línea de tiempo del niño salieron unos 2,8 s antes de lo que pasaba en el video.
 
 ### Prueba exp006 con el casco de RV y OpenBCI (2026-10-14)
 

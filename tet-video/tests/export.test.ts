@@ -243,7 +243,7 @@ describe('JSON', () => {
     const p = record(PRACTICE_DURATION, speedAt);
     const s = session({
       practica: { ...rec(p, 0), dimension: { ...PRACTICE_DIMENSION } },
-      dimensiones: [rec(record(120), 0, { modo: 'deslizador' })],
+      dimensiones: [rec(record(120), 0, { modo: 'deslizador', velocidad: 2 })],
     });
     const text = buildJson(s);
     expect(text.startsWith('{')).toBe(true); // sin BOM
@@ -269,13 +269,16 @@ describe('JSON', () => {
 
     const d = j.dimensiones[0];
     expect(Object.keys(d)).toEqual([
-      'orden', 'dimension', 'pregunta', 'modo', 'inicio_s', 'duracion_s', 'hz', 'valores_10hz', 'trazo_crudo',
+      'orden', 'dimension', 'pregunta', 'modo', 'velocidad_reproduccion', 'inicio_s', 'duracion_s', 'hz', 'valores_10hz', 'trazo_crudo',
       'cobertura', 'toques', 'pasadas', 'saltos_video', 'tiempo_respuesta_s',
     ]);
     expect(d).toMatchObject({ orden: 1, dimension: 'Diversión', modo: 'deslizador', inicio_s: 0, duracion_s: 120, hz: 10, cobertura: 1 });
     expect(d.valores_10hz).toHaveLength(1201);
     expect(d.trazo_crudo[1]).toEqual({ pasada: 1, t: 12.4, v: 0.75, ms: 22634 });
     expect(d.tiempo_respuesta_s).toBe(131.23);
+    // Velocidad por dimensión; sin ella (sesiones guardadas antes) vale la de la sesión.
+    expect(d.velocidad_reproduccion).toBe(2);
+    expect(j.practica.velocidad_reproduccion).toBe(1);
 
     expect(j.practica.orden).toBe(0);
     expect(j.practica.dimension).toBe('Práctica');

@@ -89,6 +89,8 @@ npm run preview    # sirve dist/ (con service worker: puede mostrar una versión
 node scripts/make-icons.mjs   # regenera los íconos de public/icons
 python -m unittest discover -s scripts -p "test_*.py"   # pruebas de xdf_a_eventos.py
 python scripts/xdf_a_eventos.py ../test_files/<archivo>.xdf -o eventos.csv   # XDF → CSV de eventos
+python scripts/integridad.py ../test_files/<expNNN>   # integridad de una captura (XDF, video, TET) → <expNNN>/integridad.txt
+python scripts/corregir_tet.py ../test_files/<expNNN> [--recortar]   # rehace la sincronización de TET → traces/corregido/
 bash scripts/deploy-pages.sh  # publica dist/ en GitHub Pages (repo público gitorivera/tet-app)
 ```
 

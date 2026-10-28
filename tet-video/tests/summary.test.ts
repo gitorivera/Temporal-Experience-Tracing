@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { interpretCorrelation, practiceSummary, summaryRows } from '../src/summary';
+import { correlationLevel, interpretCorrelation, practiceSummary, summaryRows } from '../src/summary';
 import { speedAt } from '../src/practice';
 import type { DimensionRecord, SessionData } from '../src/state';
 
@@ -37,11 +37,12 @@ function session(practica: DimensionRecord | null, dimensiones: DimensionRecord[
 
 describe('tabla de la pantalla final (SPEC §11)', () => {
   it('una fila por dimensión, con la práctica primero', () => {
-    const s = session(rec('Práctica', [0.5, 0.5]), [rec('Diversión', [0.1, NaN, 0.3, 0.4]), rec('Esfuerzo', [0.2, 0.2])]);
+    const s = session(rec('Práctica', [0.5, 0.5]), [rec('Diversión', [0.1, NaN, 0.3, 0.4]), rec('Esfuerzo', [0.2, 0.2], { velocidad: 1.5 })]);
     expect(summaryRows(s)).toEqual([
-      { orden: 0, nombre: 'Práctica', cobertura: '100 %', tiempo: '1:15', pasadas: 2, toques: 3, saltos: 1 },
-      { orden: 1, nombre: 'Diversión', cobertura: '75 %', tiempo: '1:15', pasadas: 2, toques: 3, saltos: 1 },
-      { orden: 2, nombre: 'Esfuerzo', cobertura: '100 %', tiempo: '1:15', pasadas: 2, toques: 3, saltos: 1 },
+      { orden: 0, nombre: 'Práctica', cobertura: '100 %', tiempo: '1:15', velocidad: '1×', pasadas: 2, toques: 3, saltos: 1 },
+      { orden: 1, nombre: 'Diversión', cobertura: '75 %', tiempo: '1:15', velocidad: '1×', pasadas: 2, toques: 3, saltos: 1 },
+      // Velocidad cambiada por el investigador en esta dimensión.
+      { orden: 2, nombre: 'Esfuerzo', cobertura: '100 %', tiempo: '1:15', velocidad: '1,5×', pasadas: 2, toques: 3, saltos: 1 },
     ]);
   });
 
@@ -60,6 +61,15 @@ describe('interpretación de la correlación de la práctica', () => {
     expect(interpretCorrelation(0.1)).toMatch(/no haya entendido/);
     expect(interpretCorrelation(-0.6)).toMatch(/^r = -0,60/);
     expect(interpretCorrelation(null)).toMatch(/insuficiente/);
+  });
+
+  it('nivel de la correlación para la pantalla tras la práctica', () => {
+    expect(correlationLevel(0.5)).toBe('buena');
+    expect(correlationLevel(0.49)).toBe('parcial');
+    expect(correlationLevel(0.2)).toBe('parcial');
+    expect(correlationLevel(0.19)).toBe('dudosa');
+    expect(correlationLevel(-0.7)).toBe('dudosa');
+    expect(correlationLevel(null)).toBe('insuficiente');
   });
 
   it('un trazo que copia la velocidad da una buena correlación', () => {

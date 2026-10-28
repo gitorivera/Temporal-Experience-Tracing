@@ -836,6 +836,136 @@ button {
   touch-action: none;
   -webkit-touch-callout: none;
 }
+
+/* Modo botones: ▲ arriba y ▼ abajo, a la derecha de la gráfica (mantener pulsado). */
+.tracing.buttons-mode .tr-track {
+  grid-template-columns: 76px minmax(0, 1fr) 112px;
+}
+.tr-arrows {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 0;
+}
+.tr-arrow {
+  flex: 1 1 0;
+  min-height: var(--touch-min);
+  max-height: 160px;
+  border-radius: var(--radius-l);
+  border: 3px solid var(--line);
+  background: var(--panel);
+  color: var(--trace);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.tr-arrow.pressed {
+  background: var(--sun);
+  border-color: var(--sun);
+  color: var(--sun-ink);
+}
+.tr-arrows.inactive .tr-arrow {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Velocidad del video por dimensión (la elige el investigador): discreta, sobre «¡Vamos!». */
+.tr-speed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 0 0 22px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.tr-speed-label {
+  font-weight: 700;
+}
+.tr-speed-opts {
+  display: inline-flex;
+  gap: 6px;
+}
+.tr-speed-btn {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tr-speed-btn[aria-pressed='true'] {
+  background: var(--sea);
+  border-color: var(--sea);
+  color: var(--sea-ink);
+}
+.tr-admin-reset-row {
+  margin-top: 14px;
+}
+.tr-admin-reset-note {
+  margin: 10px 0 0;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Resultado de la práctica (para el investigador, antes de las preguntas). */
+.tr-check {
+  z-index: 6;
+}
+.tr-check-box {
+  max-width: 820px;
+  border-color: var(--sea);
+}
+.tr-check-graph {
+  display: block;
+  width: 100%;
+  height: clamp(140px, 30vh, 260px);
+  background: var(--bg);
+  border-radius: var(--radius-m);
+}
+.tr-check-legend {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+.tr-key {
+  display: inline-block;
+  width: 28px;
+  height: 0;
+  margin: 0 6px 0 14px;
+  vertical-align: middle;
+  border-top: 4px solid var(--trace);
+}
+.tr-key-ref {
+  border-top: 3px dashed var(--sea);
+}
+.tr-check-r {
+  margin: 14px 0 22px;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+.tr-check-r[data-nivel='buena'] {
+  color: var(--ok);
+}
+.tr-check-r[data-nivel='parcial'] {
+  color: var(--warn);
+}
+.tr-check-r[data-nivel='dudosa'],
+.tr-check-r[data-nivel='insuficiente'] {
+  color: var(--danger);
+}
 .notice + .notice {
   margin-top: 8px;
 }

@@ -5,7 +5,7 @@ import type { Ventana } from './data/window';
 import type { Player } from './players/player';
 
 export type Condicion = 'RM' | 'Tablet';
-export type ModoRespuesta = 'trazo' | 'deslizador';
+export type ModoRespuesta = 'trazo' | 'deslizador' | 'botones';
 export type Velocidad = 1 | 1.5 | 2;
 
 export interface Dimension {
@@ -56,6 +56,11 @@ export interface DimensionRecord {
   pasadas: number;
   saltosVideo: number;
   tiempoRespuestaS: number | null;
+  /**
+   * Velocidad de reproducción de la pasada que quedó (el investigador la puede cambiar en cada
+   * dimensión). Ausente en sesiones guardadas antes: vale la de la sesión.
+   */
+  velocidad?: Velocidad;
 }
 
 /** Todo lo necesario para generar los archivos de salida (SPEC §8.3). */
@@ -75,6 +80,7 @@ export interface SessionData {
   /** Eventos en tiempo del video (no de la ventana). */
   eventos: VideoEvent[];
   modo: ModoRespuesta;
+  /** Velocidad con que empezó la sesión; la de cada dimensión está en su registro. */
   velocidad: Velocidad;
   ordenAleatorio: boolean;
   resolucionS: number;

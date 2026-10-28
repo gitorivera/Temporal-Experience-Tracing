@@ -73,8 +73,9 @@ export const mountSetup: MountScreen = (root, go) => {
             <select id="f-modo">
               <option value="trazo">Trazo sobre la gráfica</option>
               <option value="deslizador">Deslizador lateral</option>
+              <option value="botones">Botones ▲ ▼ o flechas del teclado</option>
             </select>
-            <small>En ambos el video corre sin pausas y la línea avanza sola; el niño solo sube o baja.</small>
+            <small>En todos el video corre sin pausas y la línea avanza sola; el niño solo sube o baja. Con botones, la línea se mueve mientras se mantiene pulsado ▲ o ▼ (o las flechas ↑ ↓).</small>
           </label>
           <label class="field">Velocidad de reproducción
             <select id="f-velocidad">

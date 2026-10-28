@@ -123,13 +123,17 @@ export function buildToquesCsv(s: SessionData): string {
   return csv(TOQUES_HEADER, rows);
 }
 
-/** `off`: segundo del video del primer valor; el valor i está en off + i / hz. */
-function packDimension(rec: DimensionRecord, orden: number, off: number) {
+/**
+ * `off`: segundo del video del primer valor; el valor i está en off + i / hz.
+ * `velocidad`: la de la sesión, para registros guardados antes de que fuera por dimensión.
+ */
+function packDimension(rec: DimensionRecord, orden: number, off: number, velocidad: number) {
   return {
     orden,
     dimension: rec.dimension.nombre,
     pregunta: rec.dimension.pregunta,
     modo: rec.modo,
+    velocidad_reproduccion: rec.velocidad ?? velocidad,
     inicio_s: round(off, 3),
     duracion_s: rec.duracionS,
     hz: HZ,
@@ -163,9 +167,9 @@ export function buildJson(s: SessionData): string {
       orden_aleatorio: s.ordenAleatorio,
     },
     practica: s.practica
-      ? { ...packDimension(s.practica, 0, 0), correlacion_con_velocidad: r === null ? null : round(r, 4) }
+      ? { ...packDimension(s.practica, 0, 0, s.velocidad), correlacion_con_velocidad: r === null ? null : round(r, 4) }
       : null,
-    dimensiones: s.dimensiones.map((rec, i) => packDimension(rec, i + 1, offsetOf(s, i + 1))),
+    dimensiones: s.dimensiones.map((rec, i) => packDimension(rec, i + 1, offsetOf(s, i + 1), s.velocidad)),
   };
   // Sin BOM (autorizado por el investigador): muchos lectores de JSON lo rechazan.
   return JSON.stringify(data, null, 1);

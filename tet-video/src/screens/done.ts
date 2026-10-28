@@ -38,13 +38,19 @@ function syncText(sync: Sync): string {
   );
 }
 
+const MODO_TEXTO: Record<SessionData['modo'], string> = {
+  trazo: 'Trazo sobre la gráfica',
+  deslizador: 'Deslizador lateral',
+  botones: 'Botones ▲ ▼ o flechas del teclado',
+};
+
 function metaLines(s: SessionData): [string, string][] {
   const sync = s.sincronizacion;
   return [
     ['Participante', s.participante],
     ['Condición', s.condicion === 'RM' ? 'Realidad mixta (RM)' : 'Tablet'],
-    ['Modo', s.modo === 'trazo' ? 'Trazo sobre la gráfica' : 'Deslizador lateral'],
-    ['Velocidad', `${num(s.velocidad, s.velocidad % 1 ? 1 : 0)}×`],
+    ['Modo', MODO_TEXTO[s.modo]],
+    ['Velocidad inicial', `${num(s.velocidad, s.velocidad % 1 ? 1 : 0)}×`],
     ['Orden', s.ordenAleatorio ? 'Aleatorio' : 'Fijo'],
     ['Inicio', new Date(s.inicio).toLocaleString('es-CO')],
     ['Grabación', s.grabacion ?? 'Grabación de ejemplo'],
@@ -81,7 +87,7 @@ export const mountDone: MountScreen = (root, go) => {
         <table>
           <thead><tr>
             <th>Orden</th><th>Dimensión</th><th>Cobertura</th><th>Tiempo de respuesta</th>
-            <th>Pasadas</th><th>Toques</th><th>Saltos en el video</th>
+            <th>Velocidad</th><th>Pasadas</th><th>Toques</th><th>Saltos en el video</th>
           </tr></thead>
           <tbody id="filas"></tbody>
         </table>
@@ -174,7 +180,7 @@ export const mountDone: MountScreen = (root, go) => {
   const tbody = $('filas');
   for (const r of summaryRows(s)) {
     const tr = document.createElement('tr');
-    const cells = [r.orden, r.nombre, r.cobertura, r.tiempo, r.pasadas, r.toques, r.saltos];
+    const cells = [r.orden, r.nombre, r.cobertura, r.tiempo, r.velocidad, r.pasadas, r.toques, r.saltos];
     for (const c of cells) {
       const td = document.createElement('td');
       td.textContent = String(c);

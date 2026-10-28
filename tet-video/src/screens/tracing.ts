@@ -6,13 +6,25 @@ import { childEvents, type VideoEvent } from '../data/events';
 import { eventsInWindow } from '../data/window';
 import type { Player } from '../players/player';
 import { createPracticePlayer } from '../players/scenes';
-import { PRACTICE_DIMENSION } from '../practice';
-import { setFinished, takePlan, type Dimension, type DimensionRecord, type SessionData } from '../state';
-import { putSession, toStored } from '../data/storage';
+import { PRACTICE_DIMENSION, practiceCorrelation, speedAt } from '../practice';
+import { correlationLevel, interpretCorrelation, velocidadTexto } from '../summary';
+import {
+  setFinished,
+  takePlan,
+  type Dimension,
+  type DimensionRecord,
+  type ModoRespuesta,
+  type SessionData,
+  type Velocidad,
+} from '../state';
+import { VELOCIDADES } from '../config';
+import { deleteSession, putSession, sessionId, toStored } from '../data/storage';
 import { DimensionRecorder, VALOR_INICIAL } from '../trace/recorder';
+import { HoldInput, holdStep } from '../trace/hold';
 import { ScreenAwake } from '../device';
 import {
   drawGraph,
+  drawMini,
   drawTimeline,
   fitCanvas,
   readPalette,
@@ -33,8 +45,14 @@ interface Item {
   eventos: readonly VideoEvent[];
 }
 
-function instruction(practica: boolean, slider: boolean): string {
-  const how = slider ? 'sube o baja el botón amarillo' : 'pon tu dedo en el recuadro y súbelo o bájalo';
+const COMO: Record<ModoRespuesta, string> = {
+  trazo: 'pon tu dedo en el recuadro y súbelo o bájalo',
+  deslizador: 'sube o baja el botón amarillo',
+  botones: 'mantén pulsado ▲ para subir la línea o ▼ para bajarla',
+};
+
+function instruction(practica: boolean, modo: ModoRespuesta): string {
+  const how = COMO[modo];
   return practica
     ? `Mira la pelota. Cuando empiece a moverse, ${how}: arriba si va rápido, abajo si va lento.`
     : `Acuérdate de cómo te sentías mientras jugabas, no ahora viendo el video. La línea avanza sola: ${how}.`;
@@ -57,8 +75,10 @@ export const mountTracing: MountScreen = (root, go) => {
 
   const { config } = plan;
   const slider = config.modo === 'deslizador';
-  const inicio = isoLocal(new Date());
-  const t0 = performance.now();
+  const botones = config.modo === 'botones';
+  // Cambian al reiniciar la sesión desde las opciones del investigador.
+  let inicio = isoLocal(new Date());
+  let t0 = performance.now();
   const msNow = () => performance.now() - t0;
 
   const practicePlayer = config.practica ? createPracticePlayer() : null;
@@ -78,7 +98,7 @@ export const mountTracing: MountScreen = (root, go) => {
   // DOM
   // ------------------------------------------------------------------------
   const el = document.createElement('section');
-  el.className = `kid-screen tracing${slider ? ' slider-mode' : ''}`;
+  el.className = `kid-screen tracing${slider ? ' slider-mode' : ''}${botones ? ' buttons-mode' : ''}`;
   el.innerHTML = `
     <header class="tr-top">
       <h1 class="tr-q"></h1>
@@ -100,6 +120,10 @@ export const mountTracing: MountScreen = (root, go) => {
       <canvas class="tr-graph" aria-label="Área para dibujar la línea"></canvas>
       <div class="tr-slider" ${slider ? '' : 'hidden'} role="slider" aria-orientation="vertical"
         aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><div class="tr-thumb"></div></div>
+      <div class="tr-arrows" ${botones ? '' : 'hidden'}>
+        <button type="button" class="tr-arrow" data-dir="1" aria-label="Subir la línea (flecha ↑)">▲</button>
+        <button type="button" class="tr-arrow" data-dir="-1" aria-label="Bajar la línea (flecha ↓)">▼</button>
+      </div>
     </div>
     <footer class="tr-bottom">
       <button type="button" class="btn sea kid" id="tr-run">▶ Empezar</button>
@@ -111,7 +135,24 @@ export const mountTracing: MountScreen = (root, go) => {
       <div class="tr-intro-box">
         <p class="big tr-intro-q"></p>
         <p class="tr-intro-p"></p>
+        <div class="tr-speed" role="group" aria-label="Velocidad del video">
+          <span class="tr-speed-label">Velocidad del video</span>
+          <span class="tr-speed-opts"></span>
+        </div>
         <button type="button" class="btn primary kid" id="tr-go">¡Vamos!</button>
+      </div>
+    </div>
+    <div class="tr-intro tr-check" role="dialog" aria-modal="true" aria-labelledby="tr-check-t" hidden>
+      <div class="tr-intro-box tr-check-box">
+        <p class="big tr-intro-q" id="tr-check-t">Resultado de la práctica</p>
+        <canvas class="tr-check-graph" aria-label="Línea del niño y velocidad real de la pelota"></canvas>
+        <p class="tr-check-legend"><span class="tr-key tr-key-trace"></span> Línea del niño
+          <span class="tr-key tr-key-ref"></span> Velocidad real de la pelota</p>
+        <p class="tr-check-r"></p>
+        <div class="row tr-admin-actions">
+          <button type="button" class="btn kid" id="tr-check-repetir">↺ Repetir la práctica</button>
+          <button type="button" class="btn primary kid" id="tr-check-seguir">Seguir con las preguntas</button>
+        </div>
       </div>
     </div>
     <div class="tr-rotate" aria-live="polite">
@@ -122,10 +163,18 @@ export const mountTracing: MountScreen = (root, go) => {
       <div class="tr-intro-box tr-admin-box">
         <p class="big tr-intro-q" id="tr-admin-t">Opciones del investigador</p>
         <p class="tr-intro-p tr-admin-p"></p>
+        <div class="tr-speed" role="group" aria-label="Velocidad del video desde la próxima pasada">
+          <span class="tr-speed-label">Velocidad del video (desde la próxima pasada)</span>
+          <span class="tr-speed-opts"></span>
+        </div>
         <div class="row tr-admin-actions">
           <button type="button" class="btn kid" id="tr-admin-seguir">Seguir con la sesión</button>
           <button type="button" class="btn danger kid" id="tr-admin-fin">Terminar la sesión aquí</button>
         </div>
+        <div class="row tr-admin-actions tr-admin-reset-row">
+          <button type="button" class="btn danger" id="tr-admin-reset">↺ Reiniciar todo sin guardar</button>
+        </div>
+        <p class="tr-admin-reset-note" hidden>Se borra lo trazado en esta sesión (también lo ya guardado en el dispositivo) y se empieza otra vez desde el principio. Toca otra vez para confirmar.</p>
       </div>
     </div>
   `;
@@ -153,6 +202,14 @@ export const mountTracing: MountScreen = (root, go) => {
   const adminP = q('.tr-admin-p');
   const btnAdminSeguir = q<HTMLButtonElement>('#tr-admin-seguir');
   const btnAdminFin = q<HTMLButtonElement>('#tr-admin-fin');
+  const btnAdminReset = q<HTMLButtonElement>('#tr-admin-reset');
+  const resetNote = q('.tr-admin-reset-note');
+  const arrows = q('.tr-arrows');
+  const check = q('.tr-check');
+  const checkGraph = q<HTMLCanvasElement>('.tr-check-graph');
+  const checkR = q('.tr-check-r');
+  const btnCheckRepetir = q<HTMLButtonElement>('#tr-check-repetir');
+  const btnCheckSeguir = q<HTMLButtonElement>('#tr-check-seguir');
 
   // ------------------------------------------------------------------------
   // Estado de la dimensión en curso
@@ -167,6 +224,14 @@ export const mountTracing: MountScreen = (root, go) => {
   let confirmPending = false;
   let frame: number | null = null;
   let palette: Palette = readPalette();
+  /** Velocidad que usará la próxima pasada; el investigador la cambia en cada dimensión. */
+  let velocidad: Velocidad = config.velocidad;
+  /** Velocidad de la última pasada empezada: la que se guarda con la dimensión. */
+  let velPasada: Velocidad = velocidad;
+  /** Botones ▲ ▼ o flechas pulsados ahora (modo botones). */
+  const hold = new HoldInput();
+  let lastFrameAt = performance.now();
+  const arrowButtons = [...arrows.querySelectorAll<HTMLButtonElement>('.tr-arrow')];
 
   // ------------------------------------------------------------------------
   // Dibujo
@@ -190,10 +255,18 @@ export const mountTracing: MountScreen = (root, go) => {
       sliderBox.setAttribute('aria-valuenow', String(Math.round(v * 100)));
       sliderBox.setAttribute('aria-disabled', String(rec.state !== 'grabando'));
     }
+    if (botones) {
+      arrows.classList.toggle('inactive', rec.state !== 'grabando');
+      for (const b of arrowButtons) b.classList.toggle('pressed', hold.isPressed(Number(b.dataset.dir) as 1 | -1));
+    }
   }
 
-  const ro = new ResizeObserver(() => render());
+  const ro = new ResizeObserver(() => {
+    render();
+    drawCheck();
+  });
   ro.observe(graph);
+  ro.observe(checkGraph);
   ro.observe(timeline);
   ro.observe(sliderBox);
 
@@ -202,6 +275,7 @@ export const mountTracing: MountScreen = (root, go) => {
   const onTheme = () => {
     palette = readPalette();
     render();
+    drawCheck();
   };
   mql.addEventListener('change', onTheme);
 
@@ -212,6 +286,10 @@ export const mountTracing: MountScreen = (root, go) => {
     frame = null;
     if (rec.state !== 'grabando') return;
     const p = item.player;
+    // Modo botones: el valor avanza según el tiempo real transcurrido desde el cuadro anterior.
+    const ahora = performance.now();
+    if (botones) rec.setValue(holdStep(rec.value, hold.direction, (ahora - lastFrameAt) / 1000));
+    lastFrameAt = ahora;
     rec.sample(p.currentTime, msNow());
     // Respaldo por si el evento de fin no llega: el reproductor se detuvo en el final.
     if (p.paused && p.currentTime >= p.duration - 0.05) {
@@ -225,6 +303,7 @@ export const mountTracing: MountScreen = (root, go) => {
   function stopLoop() {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
+    hold.releaseAll();
   }
 
   function onEnded() {
@@ -265,7 +344,8 @@ export const mountTracing: MountScreen = (root, go) => {
     p.pause();
     p.currentTime = 0;
     rec.begin(msNow());
-    p.playbackRate = config.velocidad;
+    p.playbackRate = velocidad;
+    velPasada = velocidad;
     updateControls();
     render();
     // play() se llama dentro del gesto del botón (autoplay, SPEC §13).
@@ -278,6 +358,7 @@ export const mountTracing: MountScreen = (root, go) => {
       render();
     });
     stopLoop();
+    lastFrameAt = performance.now();
     frame = requestAnimationFrame(loop);
   });
 
@@ -305,7 +386,7 @@ export const mountTracing: MountScreen = (root, go) => {
     return valueFromY(ev.clientY - r.top, r.height);
   };
   graph.addEventListener('pointerdown', (ev) => {
-    if (slider || rec.state !== 'grabando') return;
+    if (config.modo !== 'trazo' || rec.state !== 'grabando') return;
     ev.preventDefault();
     graph.setPointerCapture(ev.pointerId);
     fingerDown = true;
@@ -351,6 +432,52 @@ export const mountTracing: MountScreen = (root, go) => {
   };
   sliderBox.addEventListener('pointerup', liftSlider);
   sliderBox.addEventListener('pointercancel', liftSlider);
+
+  // ------------------------------------------------------------------------
+  // Modo botones: ▲ ▼ en pantalla y flechas ↑ ↓ del teclado; mientras están pulsados el
+  // valor se mueve (loop) y al soltar se queda. Cada pulsación nueva cuenta como un toque.
+  // ------------------------------------------------------------------------
+  const pressHold = (source: string, dir: 1 | -1) => {
+    if (!botones || rec.state !== 'grabando') return;
+    if (hold.press(source, dir)) rec.touch();
+    render();
+  };
+  const releaseHold = (source: string) => {
+    hold.release(source);
+    render();
+  };
+  for (const b of arrowButtons) {
+    const dir = Number(b.dataset.dir) as 1 | -1;
+    b.addEventListener('pointerdown', (ev) => {
+      if (!botones || rec.state !== 'grabando') return;
+      ev.preventDefault();
+      b.setPointerCapture(ev.pointerId);
+      pressHold(`p${ev.pointerId}`, dir);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
+      b.addEventListener(type, (ev) => releaseHold(`p${ev.pointerId}`));
+    }
+    // Mantener pulsado en una pantalla táctil abre el menú contextual.
+    b.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  }
+  const KEY_DIR: Record<string, 1 | -1> = { ArrowUp: 1, ArrowDown: -1 };
+  const onKeyDown = (ev: KeyboardEvent) => {
+    const dir = KEY_DIR[ev.key];
+    if (!botones || dir === undefined || !intro.hidden || !admin.hidden || !check.hidden) return;
+    ev.preventDefault();
+    if (!ev.repeat) pressHold(`k${ev.key}`, dir);
+  };
+  const onKeyUp = (ev: KeyboardEvent) => {
+    if (KEY_DIR[ev.key] !== undefined) releaseHold(`k${ev.key}`);
+  };
+  // Si la ventana pierde el foco, la tecla suelta no llega: soltar todo.
+  const releaseAllHold = () => {
+    hold.releaseAll();
+    render();
+  };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', releaseAllHold);
 
   // ------------------------------------------------------------------------
   // Línea de tiempo: navegable fuera de la grabación; cada gesto es un salto (SPEC §7.5)
@@ -423,6 +550,7 @@ export const mountTracing: MountScreen = (root, go) => {
     p.currentTime = 0;
     stage.replaceChildren(p.el);
     rec = new DimensionRecorder(p.duration);
+    velPasada = velocidad;
     offEnded = p.onEnded(onEnded);
     introAt = null;
     fingerDown = false;
@@ -442,7 +570,7 @@ export const mountTracing: MountScreen = (root, go) => {
     updateControls();
 
     introQ.textContent = item.dimension.pregunta;
-    introP.textContent = instruction(item.practica, slider);
+    introP.textContent = instruction(item.practica, config.modo);
     intro.hidden = false;
     btnGo.focus();
     requestAnimationFrame(render);
@@ -458,13 +586,60 @@ export const mountTracing: MountScreen = (root, go) => {
   function finishItem() {
     item.player.pause();
     const tiempo = introAt === null ? null : (performance.now() - introAt) / 1000;
-    const r = rec.toRecord(item.dimension, config.modo, tiempo);
-    if (item.practica) practicaRec = r;
-    else dimensiones.push(r);
+    const r: DimensionRecord = { ...rec.toRecord(item.dimension, config.modo, tiempo), velocidad: velPasada };
+    if (item.practica) {
+      // Las pasadas y los saltos de los intentos anteriores de la práctica se acumulan.
+      r.pasadas += practicaPrevia.pasadas;
+      r.saltosVideo += practicaPrevia.saltos;
+      practicaRec = r;
+    } else dimensiones.push(r);
     save();
+    if (item.practica) showCheck(r);
+    else nextItem();
+  }
+
+  function nextItem() {
     if (idx + 1 < items.length) startItem(idx + 1);
     else endSession();
   }
+
+  // ------------------------------------------------------------------------
+  // Resultado de la práctica: el investigador ve si el niño entendió la tarea
+  // antes de pasar a las preguntas, y puede repetirla.
+  // ------------------------------------------------------------------------
+  /** Pasadas y saltos de los intentos de práctica ya descartados con «Repetir la práctica». */
+  const practicaPrevia = { pasadas: 0, saltos: 0 };
+
+  function drawCheck() {
+    if (check.hidden || !practicaRec) return;
+    const c = fitCanvas(checkGraph);
+    if (c) drawMini(c.ctx, c.w, c.h, practicaRec.valores, practicaRec.duracionS, palette, speedAt);
+  }
+
+  function showCheck(r: DimensionRecord) {
+    const corr = practiceCorrelation(r.valores);
+    checkR.textContent = interpretCorrelation(corr);
+    checkR.dataset.nivel = correlationLevel(corr);
+    check.hidden = false;
+    btnCheckSeguir.focus();
+    requestAnimationFrame(drawCheck);
+  }
+
+  btnCheckRepetir.addEventListener('click', () => {
+    if (check.hidden || !practicaRec) return;
+    // El intento anterior queda guardado hasta que el nuevo lo reemplace (si la sesión se
+    // termina antes, no se pierde); sus pasadas y saltos se suman al nuevo.
+    practicaPrevia.pasadas = practicaRec.pasadas;
+    practicaPrevia.saltos = practicaRec.saltosVideo;
+    check.hidden = true;
+    startItem(idx);
+  });
+
+  btnCheckSeguir.addEventListener('click', () => {
+    if (check.hidden) return;
+    check.hidden = true;
+    nextItem();
+  });
 
   /**
    * Respaldo en IndexedDB tras cada dimensión (SPEC §9). Los guardados se encadenan para que
@@ -549,11 +724,13 @@ export const mountTracing: MountScreen = (root, go) => {
     adminP.textContent =
       `Quedaron guardadas ${hechas} de ${total} ${total === 1 ? 'dimensión' : 'dimensiones'}` +
       `${practicaRec ? ' y la práctica' : ''}. Si terminas aquí, la dimensión en curso no se guarda.`;
+    cancelReset();
     admin.hidden = false;
     btnAdminSeguir.focus();
   }
 
   btnAdminSeguir.addEventListener('click', () => {
+    cancelReset();
     admin.hidden = true;
     (intro.hidden ? btnRun : btnGo).focus();
   });
@@ -561,6 +738,77 @@ export const mountTracing: MountScreen = (root, go) => {
     admin.hidden = true;
     item.player.pause();
     endSession(true);
+  });
+
+  // ------------------------------------------------------------------------
+  // Velocidad del video por dimensión: en la tarjeta de inicio y en las opciones del
+  // investigador. Vale desde la próxima pasada y sigue en las dimensiones siguientes.
+  // ------------------------------------------------------------------------
+  const speedButtons: HTMLButtonElement[] = [];
+  for (const group of el.querySelectorAll<HTMLElement>('.tr-speed-opts')) {
+    for (const v of VELOCIDADES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tr-speed-btn';
+      b.dataset.v = String(v);
+      b.textContent = velocidadTexto(v);
+      b.addEventListener('click', () => {
+        velocidad = v;
+        renderSpeed();
+      });
+      group.append(b);
+      speedButtons.push(b);
+    }
+  }
+  function renderSpeed() {
+    for (const b of speedButtons) b.setAttribute('aria-pressed', String(Number(b.dataset.v) === velocidad));
+  }
+  renderSpeed();
+
+  // ------------------------------------------------------------------------
+  // Reinicio total: borra todo lo de esta sesión (también lo ya guardado) y empieza de
+  // nuevo desde la práctica o la primera dimensión. Confirmación en dos toques.
+  // ------------------------------------------------------------------------
+  let resetPending = false;
+  function cancelReset() {
+    resetPending = false;
+    resetNote.hidden = true;
+    btnAdminReset.textContent = '↺ Reiniciar todo sin guardar';
+  }
+
+  btnAdminReset.addEventListener('click', () => {
+    if (!resetPending) {
+      resetPending = true;
+      resetNote.hidden = false;
+      btnAdminReset.textContent = 'Sí, borrar todo y reiniciar';
+      return;
+    }
+    cancelReset();
+    admin.hidden = true;
+    check.hidden = true;
+    item.player.pause();
+    stopLoop();
+    // Lo guardado (práctica y dimensiones terminadas) se borra después de los guardados pendientes.
+    const id = sessionId({ inicio, participante: config.participante });
+    saveChain = saveChain.then(() =>
+      deleteSession(id).then(
+        () => true,
+        (err: unknown) => {
+          console.error('No se pudo borrar la sesión reiniciada de IndexedDB', err);
+          return false;
+        },
+      ),
+    );
+    inicio = isoLocal(new Date());
+    t0 = performance.now();
+    practicaRec = null;
+    dimensiones.length = 0;
+    practicaPrevia.pasadas = 0;
+    practicaPrevia.saltos = 0;
+    velocidad = config.velocidad;
+    renderSpeed();
+    setMsg('');
+    startItem(0);
   });
 
   // Mantener la pantalla encendida durante la sesión (SPEC §7.9).
@@ -577,6 +825,9 @@ export const mountTracing: MountScreen = (root, go) => {
     ro.disconnect();
     mql.removeEventListener('change', onTheme);
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', releaseAllHold);
     plan.player.el.removeEventListener('seeked', onSeeked);
     plan.player.destroy();
     practicePlayer?.destroy();

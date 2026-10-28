@@ -9,8 +9,8 @@ const STORAGE_KEY = 'tet-video:config';
 export type KeyValueStore = Pick<Storage, 'getItem' | 'setItem'>;
 
 const CONDICIONES: readonly Condicion[] = ['RM', 'Tablet'];
-const MODOS: readonly ModoRespuesta[] = ['trazo', 'deslizador'];
-const VELOCIDADES: readonly Velocidad[] = [1, 1.5, 2];
+const MODOS: readonly ModoRespuesta[] = ['trazo', 'deslizador', 'botones'];
+export const VELOCIDADES: readonly Velocidad[] = [1, 1.5, 2];
 
 export const RESOLUCION_MIN = 0.1;
 
