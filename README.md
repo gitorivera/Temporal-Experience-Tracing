@@ -30,8 +30,6 @@ This app is the tracing tool. It runs on an **Android tablet with no internet co
 | [`tet-video/`](tet-video/) | The app (Vite + TypeScript, tests, scripts). |
 | [`SPEC-tet-video.md`](SPEC-tet-video.md) | Full specification (in Spanish). |
 | [`GAME-SPECS.md`](GAME-SPECS.md) | What the game must do (flashes, markers, event names) so traces can be synchronized. |
-| [`ESTADO.md`](ESTADO.md) | Current project status and pending work. |
-| [`CLAUDE.md`](CLAUDE.md) | Working notes and researcher-approved deviations from the spec. |
 | [`reference/prototype.html`](reference/prototype.html) | Single-file prototype, behavior reference only. |
 | [`test_files/`](test_files/) | A real Quest recording, its XDF and events CSV, used for testing. |
 
@@ -66,7 +64,7 @@ Vite 8, TypeScript (strict), `vite-plugin-pwa`, Vitest. Runtime dependencies: on
 
 ## Status
 
-Phases 1–10 are built and reviewed; tablet field testing and the pilot with children are pending. See [`ESTADO.md`](ESTADO.md).
+Phases 1–10 are built and reviewed; tablet field testing and the pilot with children are pending.
 
 ## Language
 

@@ -4,3 +4,6 @@ __pycache__/
 test_files/exp*/
 # Configuración personal de Claude Code.
 .claude/settings.local.json
+# Notas de trabajo locales: no se suben al repositorio remoto.
+[Cc][Ll][Aa][Uu][Dd][Ee].md
+[Ee][Ss][Tt][Aa][Dd][Oo].md

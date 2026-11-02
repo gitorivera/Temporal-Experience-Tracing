@@ -30,8 +30,6 @@ Esta aplicación es la herramienta de trazado. Corre en una **tablet Android sin
 | [`tet-video/`](tet-video/) | La aplicación (Vite + TypeScript, pruebas, scripts). |
 | [`SPEC-tet-video.md`](SPEC-tet-video.md) | Especificación completa. |
 | [`GAME-SPECS.md`](GAME-SPECS.md) | Lo que debe hacer el juego (destellos, marcadores, nombres de eventos) para poder sincronizar las trazas. |
-| [`ESTADO.md`](ESTADO.md) | Estado actual del proyecto y pendientes. |
-| [`CLAUDE.md`](CLAUDE.md) | Notas de trabajo y cambios al SPEC autorizados por el investigador. |
 | [`reference/prototype.html`](reference/prototype.html) | Prototipo de un solo archivo, solo como referencia de comportamiento. |
 | [`test_files/`](test_files/) | Una grabación real de la Quest, su XDF y su CSV de eventos, para pruebas. |
 
@@ -66,7 +64,7 @@ Vite 8, TypeScript (modo estricto), `vite-plugin-pwa`, Vitest. Dependencias de e
 
 ## Estado
 
-Las fases 1 a 10 están construidas y revisadas; faltan la prueba en la tablet real y el piloto con niños. Ver [`ESTADO.md`](ESTADO.md).
+Las fases 1 a 10 están construidas y revisadas; faltan la prueba en la tablet real y el piloto con niños.
 
 ## Idioma
 
