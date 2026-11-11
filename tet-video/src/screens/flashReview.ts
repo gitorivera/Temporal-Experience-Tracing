@@ -48,6 +48,8 @@ interface Row {
   origen: 'auto' | 'manual';
   /** Tiempo del recorrido a 4× aún sin precisar cuadro a cuadro. */
   aprox: boolean;
+  /** Lo halló la segunda búsqueda y no el recorrido: conviene revisarlo con «Ver». */
+  segundaBusqueda: boolean;
   incluido: boolean;
 }
 
@@ -227,7 +229,8 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
       };
       cell(r.etiqueta);
       cell(num(r.lsl, 3));
-      cell(r.v === null ? 'falta' : `${num(r.v, 3)}${r.aprox ? ' (aprox.)' : ''}${r.origen === 'manual' ? ' · a mano' : ''}`, r.v === null ? 'warn-text' : '');
+      const nota = r.origen === 'manual' ? ' · a mano' : r.segundaBusqueda ? ' · segunda búsqueda' : '';
+      cell(r.v === null ? 'falta' : `${num(r.v, 3)}${r.aprox ? ' (aprox.)' : ''}${nota}`, r.v === null ? 'warn-text' : '');
       if (r.v !== null && r.incluido && prev) {
         const dv = r.v - prev.v!;
         const dl = r.lsl - prev.lsl;
@@ -369,15 +372,17 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
       if (r.origen === 'manual') return;
       r.v = match.pairs[k] ?? null;
       r.aprox = r.v !== null;
+      r.segundaBusqueda = false;
     });
   }
 
   async function refineRows(run: number) {
     if (!fv || !box) return;
     const pending = rows.filter((r) => r.v !== null && r.aprox);
+    const missing = found().length > 0 ? rows.filter((r) => r.v === null && r.origen === 'auto') : [];
     phase = 'refinando';
     refineDone = 0;
-    refineTotal = pending.length;
+    refineTotal = pending.length + missing.length;
     changed();
     try {
       for (const r of pending) {
@@ -388,6 +393,19 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
           r.aprox = false;
         }
         if (res.frameS) frameS = res.frameS;
+        refineDone++;
+        render();
+      }
+      // Segunda búsqueda: el recorrido mira píxeles que cambian a blanco, así que pierde un destello
+      // partido por algo que ya estaba blanco justo antes. Aquí se mide el recuadro directamente,
+      // solo donde debe estar el destello según los ya hallados.
+      for (const r of missing) {
+        const res = await fv.refine(estimate(rows.indexOf(r)), box, abort.signal);
+        if (run !== runId) return;
+        if (res.v !== null) {
+          r.v = res.v;
+          r.segundaBusqueda = true;
+        }
         refineDone++;
         render();
       }
@@ -513,6 +531,7 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
       r.v = null;
       r.origen = 'auto';
       r.aprox = false;
+      r.segundaBusqueda = false;
       r.incluido = true;
     });
     void detect();
@@ -548,7 +567,7 @@ export function mountFlashReview(card: HTMLElement, opts: FlashReviewOptions): F
       }
       file = next;
       currentSig = sig;
-      rows = syncs.map((s) => ({ etiqueta: s.label, lsl: s.t, v: null, origen: 'auto', aprox: false, incluido: true }));
+      rows = syncs.map((s) => ({ etiqueta: s.label, lsl: s.t, v: null, origen: 'auto', aprox: false, segundaBusqueda: false, incluido: true }));
       useTramos = false;
       phase = 'inactivo';
       card.hidden = file === null || rows.length === 0;

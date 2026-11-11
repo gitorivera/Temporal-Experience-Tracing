@@ -74,7 +74,8 @@ def fmt(x: float, dec: int = 3) -> str:
 def buscar_archivos(carpeta: Path) -> dict:
     todos = [p for p in carpeta.rglob("*") if p.is_file()]
     xdf = sorted(p for p in todos if p.suffix.lower() == ".xdf")
-    videos = sorted(p for p in todos if p.suffix.lower() in VIDEO_EXT)
+    # original/ guarda el video tal como salió de la Quest (quest_videos.py); se revisa la copia para TET.
+    videos = sorted(p for p in todos if p.suffix.lower() in VIDEO_EXT and "original" not in p.relative_to(carpeta).parts[:-1])
     eventos = sorted(p for p in todos if p.name.lower().endswith("_eventos.csv"))
     tet = sorted(p for p in todos if p.suffix.lower() == ".json" and p.name.startswith("TET_"))
     return {"xdf": xdf, "video": videos, "eventos": eventos, "tet": tet}

@@ -8,6 +8,46 @@ export class VideoLoadError extends Error {
 
 const UNREADABLE = 'No se pudo leer este video. Prueba con MP4 (H.264) o WebM.';
 
+/** Qué hacer cuando el navegador lee la duración pero no puede decodificar el video. */
+export const DECODE_HINT =
+  'Las grabaciones de Meta Horizon Link traen el audio dañado: cópialas con «python scripts/quest_videos.py», ' +
+  'que deja una copia sin audio (sin recomprimir el video).';
+
+/** Mensaje para un error de decodificación del elemento de video. */
+export function decodeErrorMessage(video: HTMLVideoElement): string {
+  const detail = video.error?.message ? ` (${video.error.message})` : '';
+  return `El navegador no puede reproducir este video${detail}. ${DECODE_HINT}`;
+}
+
+/**
+ * Espera a que se decodifique el primer cuadro. Rechaza si el video da error (p. ej. una pista
+ * de audio dañada, que deja todo el video en error aunque la duración se haya leído bien).
+ * Si en `timeoutMs` no pasa ninguna de las dos cosas, sigue: puede ser solo un disco lento.
+ */
+export function waitDecodable(video: HTMLVideoElement, timeoutMs = 8000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // HAVE_CURRENT_DATA = 2: ya hay un cuadro decodificado.
+    if (video.readyState >= 2) return resolve();
+    if (video.error) return reject(new VideoLoadError(decodeErrorMessage(video)));
+    const done = () => {
+      clearTimeout(timer);
+      video.removeEventListener('loadeddata', ok);
+      video.removeEventListener('error', bad);
+    };
+    const ok = () => {
+      done();
+      resolve();
+    };
+    const bad = () => {
+      done();
+      reject(new VideoLoadError(decodeErrorMessage(video)));
+    };
+    const timer = setTimeout(ok, timeoutMs);
+    video.addEventListener('loadeddata', ok);
+    video.addEventListener('error', bad);
+  });
+}
+
 /** Si un salto no termina en este tiempo, se da por perdido y se permite el siguiente. */
 const STALE_SEEK_MS = 2000;
 
@@ -79,6 +119,7 @@ export async function loadVideo(file: File, timeoutMs?: number): Promise<VideoPl
   video.src = url;
   try {
     const duration = await resolveDuration(video, timeoutMs);
+    await waitDecodable(video);
     return new VideoPlayer(video, duration, () => URL.revokeObjectURL(url));
   } catch (err) {
     video.removeAttribute('src');

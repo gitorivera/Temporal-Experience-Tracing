@@ -1,8 +1,8 @@
 // Recorrido del video en el navegador para detectar los destellos (SPEC §16.4) y visor cuadro a
 // cuadro para revisarlos (§16.5). Usa un <video> propio, sin sonido, para no tocar el reproductor
 // que verá el niño. El cálculo está en data/flash.ts.
-import { findRuns, PulseAccumulator, whiteFraction, whiteMask, type Box, type FrameSample } from '../data/flash';
-import { resolveDuration } from './videoPlayer';
+import { FLASH_REFINE_FRACTION, findRuns, PulseAccumulator, whiteFraction, whiteMask, type Box, type FrameSample } from '../data/flash';
+import { decodeErrorMessage, resolveDuration, VideoLoadError, waitDecodable } from './videoPlayer';
 
 /** Ancho del cuadro reducido con que se buscan los pulsos. */
 export const SCAN_WIDTH = 240;
@@ -15,6 +15,9 @@ const REFINE_RATE = 0.5;
 const BOX_SIDE = 32;
 /** Duración de cuadro supuesta mientras no se haya medido una. */
 export const DEFAULT_FRAME_S = 1 / 30;
+
+/** Si un salto no termina en este tiempo, se da el video por trabado (en vez de esperar para siempre). */
+const SEEK_TIMEOUT_MS = 20000;
 
 /** Clave de un tiempo de cuadro (mediaTime) para el mapa de cuadros contiguos. */
 const key = (t: number) => t.toFixed(5);
@@ -59,21 +62,52 @@ function onFrames(video: HTMLVideoElement, cb: (t: number) => void): () => void 
   };
 }
 
-function once(target: EventTarget, type: string, signal?: AbortSignal): Promise<void> {
+/**
+ * Espera el evento `type` del video. Rechaza si el video da error (no llegaría nunca), si se
+ * cancela, o si pasan SEEK_TIMEOUT_MS sin respuesta.
+ */
+function once(video: HTMLVideoElement, type: string, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const done = () => {
-      target.removeEventListener(type, done);
+    const cleanup = () => {
+      clearTimeout(timer);
+      video.removeEventListener(type, done);
+      video.removeEventListener('error', failed);
       signal?.removeEventListener('abort', abort);
+    };
+    const done = () => {
+      cleanup();
       resolve();
     };
     const abort = () => {
-      target.removeEventListener(type, done);
+      cleanup();
       reject(new ScanCancelled());
     };
+    const failed = () => {
+      cleanup();
+      reject(new VideoLoadError(decodeErrorMessage(video)));
+    };
     if (signal?.aborted) return reject(new ScanCancelled());
-    target.addEventListener(type, done);
+    if (video.error) return reject(new VideoLoadError(decodeErrorMessage(video)));
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new VideoLoadError(video.error ? decodeErrorMessage(video) : 'El video dejó de responder al buscar un cuadro.'));
+    }, SEEK_TIMEOUT_MS);
+    video.addEventListener(type, done);
+    video.addEventListener('error', failed);
     signal?.addEventListener('abort', abort);
   });
+}
+
+/** Promesa que se rechaza si el video da error mientras se reproduce; `off` deja de escuchar. */
+function errorWatch(video: HTMLVideoElement): { failed: Promise<never>; off: () => void } {
+  let onError: () => void = () => {};
+  const failed = new Promise<never>((_, reject) => {
+    onError = () => reject(new VideoLoadError(decodeErrorMessage(video)));
+    if (video.error) onError();
+  });
+  failed.catch(() => {});
+  video.addEventListener('error', onError);
+  return { failed, off: () => video.removeEventListener('error', onError) };
 }
 
 function context(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -122,6 +156,7 @@ export class FlashVideo {
     el.src = url;
     try {
       const duration = await resolveDuration(el);
+      await waitDecodable(el);
       return new FlashVideo(el, url, duration);
     } catch (err) {
       el.removeAttribute('src');
@@ -168,10 +203,12 @@ export class FlashVideo {
     el.addEventListener('ended', finish);
     const onAbort = () => finish();
     signal.addEventListener('abort', onAbort);
+    const watch = errorWatch(el);
     try {
-      await el.play();
-      await finished;
+      await Promise.race([el.play(), watch.failed]);
+      await Promise.race([finished, watch.failed]);
     } finally {
+      watch.off();
       stop();
       el.pause();
       el.removeEventListener('ended', finish);
@@ -216,10 +253,12 @@ export class FlashVideo {
     el.addEventListener('ended', finish);
     const onAbort = () => finish();
     signal.addEventListener('abort', onAbort);
+    const watch = errorWatch(el);
     try {
-      await el.play();
-      await finished;
+      await Promise.race([el.play(), watch.failed]);
+      await Promise.race([finished, watch.failed]);
     } finally {
+      watch.off();
       stop();
       el.pause();
       el.removeEventListener('ended', finish);
@@ -233,7 +272,7 @@ export class FlashVideo {
 
     const dts = samples.slice(1).map((s, k) => s.t - samples[k]!.t).sort((a, b) => a - b);
     const frameS = dts.length > 0 ? dts[Math.floor(dts.length / 2)]! : null;
-    const near = findRuns(samples)
+    const near = findRuns(samples, FLASH_REFINE_FRACTION)
       .filter((r) => Math.abs(r.start - t) <= REFINE_WINDOW_S)
       .sort((a, b) => Math.abs(a.start - t) - Math.abs(b.start - t));
     return { v: near[0]?.start ?? null, frameS };

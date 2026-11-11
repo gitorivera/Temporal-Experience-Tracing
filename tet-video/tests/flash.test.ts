@@ -4,6 +4,7 @@ import {
   chooseRegion,
   findRegions,
   findRuns,
+  FLASH_REFINE_FRACTION,
   flashesOf,
   matchFlashes,
   pixelsInBox,
@@ -30,6 +31,10 @@ interface Scene {
   flashes: number[];
   /** Señuelos: cuadrados blancos que aparecen una vez en otro lugar. */
   decoys?: { t: number; x: number; y: number }[];
+  /** Filas del destello tapadas por un texto (no llegan a blanco) en el destello de ese tiempo. */
+  covered?: { t: number; rows: number };
+  /** Franja que ya está blanca en medio del recuadro hasta que acaba el destello de ese tiempo. */
+  strip?: { until: number };
 }
 
 function frame(t: number, scene: Scene): Uint8Array {
@@ -39,7 +44,12 @@ function frame(t: number, scene: Scene): Uint8Array {
   };
   // Pared blanca que se desliza (movimiento de la cabeza): bordes que cambian en cada cuadro.
   rect(Math.floor((t * 37) % W), 20, 6, 34);
-  for (const f of scene.flashes) if (t >= f && t < f + 0.3) rect(FLASH.x, FLASH.y, FLASH.s, FLASH.s);
+  for (const f of scene.flashes) {
+    if (t < f || t >= f + 0.3) continue;
+    const tapadas = scene.covered?.t === f ? scene.covered.rows : 0;
+    rect(FLASH.x, FLASH.y + tapadas, FLASH.s, FLASH.s - tapadas);
+  }
+  if (scene.strip && t < scene.strip.until) rect(FLASH.x - 3, FLASH.y + 3, FLASH.s + 6, 2);
   for (const d of scene.decoys ?? []) if (t >= d.t && t < d.t + 0.3) rect(d.x, d.y, 8, 8);
   return m;
 }
@@ -91,6 +101,21 @@ describe('rachas de la medida del recuadro (refinamiento)', () => {
     expect(findRuns(samples([[0, 0.3]]))).toEqual([]);
   });
 
+  it('un destello tapado por un texto solo aparece con el umbral del refinamiento', () => {
+    const s = samples([[1, 1.3]]).map((m) => (m.f > 0.5 ? { ...m, f: 0.68 } : m));
+    expect(findRuns(s)).toEqual([]);
+    expect(findRuns(s, FLASH_REFINE_FRACTION)).toHaveLength(1);
+  });
+
+  it('con el texto encima, los primeros cuadros bajo 80 % no atrasan el inicio (exp010)', () => {
+    // Forma de sync_1 en exp010: el 80 % se alcanza a mitad del destello.
+    const f = [0.13, 0.13, 0.13, 0.13, 0.78, 0.79, 0.79, 0.79, 0.81, 0.82, 0.82, 0.13, 0.13];
+    const s: FrameSample[] = f.map((v, k) => ({ t: 79.786 + k * 0.0417, f: v }));
+    const inicio = 79.786 + 4 * 0.0417;
+    expect(findRuns(s, FLASH_REFINE_FRACTION)[0]!.start).toBeCloseTo(inicio, 6);
+    expect(findRuns(s)[0]!.start).toBeGreaterThan(inicio + 0.15);
+  });
+
   it('acepta cuadros con duración variable y desordenados', () => {
     const s: FrameSample[] = [0.5, 0.52, 0.56, 0.6, 0.61, 0.66, 0.7, 0.75, 0.8, 0.82, 0.9, 0.95, 1.0, 1.05].map((t) => ({ t, f: t >= 0.6 && t < 0.9 ? 1 : 0 }));
     expect(findRuns(s.reverse())).toEqual([{ start: 0.6, end: 0.9, frames: 7 }]);
@@ -127,6 +152,21 @@ describe('ubicación automática del recuadro (SPEC §16.4)', () => {
     expect(choice?.match.matched).toBe(3);
     expect(choice!.match.pairs[1]).toBeNull();
     expect(Math.abs(choice!.match.pairs[2]! - flashes[2]!)).toBeLessThan(0.04);
+  });
+
+  it('el recuadro sale del destello más completo, no de uno recortado por un texto', () => {
+    const acc = scan({ flashes, covered: { t: flashes[0]!, rows: 3 } }, 160);
+    const { box } = chooseRegion(findRegions(acc), LSL)!.region;
+    expect(box.y * H).toBeCloseTo(FLASH.y, 0);
+    expect(box.h * H).toBeCloseTo(FLASH.s, 0);
+  });
+
+  it('una franja ya blanca parte el destello: el recorrido lo pierde y no corre a los demás (exp010)', () => {
+    const acc = scan({ flashes, strip: { until: flashes[0]! + 0.3 } }, 160);
+    const choice = chooseRegion(findRegions(acc), LSL);
+    expect(choice?.match.matched).toBe(3);
+    expect(choice!.match.pairs[0]).toBeNull();
+    expect(Math.abs(choice!.match.pairs[1]! - flashes[1]!)).toBeLessThan(0.04);
   });
 
   it('sin destellos no elige nada', () => {

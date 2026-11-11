@@ -16,7 +16,7 @@ Para eso el juego marca, varias veces durante la partida, un instante que queda 
 
 | # | Requisito | Valor recomendado |
 |---|---|---|
-| 1 | Primer destello y marcador `sync_1` | Al pulsar el botón «Iniciar partida» |
+| 1 | Primer destello y marcador `sync_1` | Unos 0,5 s después de pulsar el botón «Iniciar partida», con las instrucciones ya apagadas |
 | 2 | Destellos intermedios `sync_2`, `sync_3`, … | Cada 60 s de partida |
 | 3 | Último destello `sync_N` | Al terminar la partida, antes de cualquier pantalla final |
 | 4 | Duración del destello | 300 ms |
@@ -30,7 +30,7 @@ Para eso el juego marca, varias veces durante la partida, un instante que queda 
 
 ### 3.1 Cuándo
 
-- **`sync_1` al pulsar «Iniciar partida».** El botón que aparece frente al jugador es el disparador natural: en el mismo cuadro en que se registra la pulsación se muestra el primer destello y se envían dos marcadores, `sync_1` e `inicio partida`.
+- **`sync_1` poco después de pulsar «Iniciar partida».** El botón que aparece frente al jugador es el disparador natural: al registrarse la pulsación se apagan el botón y las instrucciones, y unos 0,5 s después se muestra el primer destello y se envían dos marcadores, `sync_1` e `inicio partida`. El nivel 1 empieza cuando el destello ya se apagó, unos 0,4 s más tarde. Motivo (exp010, 2026-10-28): nada debe cambiar en la escena en el mismo cuadro del destello; el borde blanco del panel lo partía en dos para la detección de la app.
 - **Uno cada 60 s** mientras dure la partida (`sync_2`, `sync_3`, …). En una partida típica de 5 minutos salen unos 6 o 7 destellos.
 - **Uno al final** (`sync_N`), justo al terminar la partida.
 - Si la partida se pausa, el reloj de los 60 s puede seguir o detenerse; da igual, siempre que cada destello lleve su marcador.
@@ -43,7 +43,7 @@ La app empareja los destellos con los marcadores por orden y comprueba que los i
 - **Cuadrado blanco puro** (`#FFFFFF`) de unos **8° de ángulo visual**, con un **marco negro** de alrededor de 1°. El marco garantiza contraste aunque la escena sea clara.
 - **Fijo a la cabeza** (head-locked): se mueve con la vista, para que siempre salga en la grabación.
 - **Arriba del centro**, unos 10° por encima de la línea de la mirada. **No en una esquina:** la transmisión de la Quest al celular recorta los bordes de la imagen de cada ojo, y un destello en la esquina podría no salir en el video.
-- **Encima de todo:** sin profundidad (en Unity, un shader *unlit* con `ZTest Always` y una cola de render alta), sin niebla, sin post-procesado ni efectos que cambien su brillo. En URP, además, el orden de dibujo (`sortingOrder`) máximo, porque se compara antes que la cola. Ningún texto ni elemento nuevo debe aparecer en el cuadro del destello: en la prueba exp006 (2026-10-14) el «Puntaje total» de la pantalla final salió encima del último destello, y ahora se muestra cuando el destello se apaga.
+- **Encima de todo:** sin profundidad (en Unity, un shader *unlit* con `ZTest Always` y una cola de render alta), sin niebla, sin post-procesado ni efectos que cambien su brillo. En URP, además, el orden de dibujo (`sortingOrder`) máximo, porque se compara antes que la cola. Ningún texto ni elemento nuevo debe aparecer en el cuadro del destello: en la prueba exp006 (2026-10-14) el «Puntaje total» de la pantalla final salió encima del último destello, y ahora se muestra cuando el destello se apaga. El letrero de puntaje se apaga mientras dura cada destello, porque en exp010 (2026-10-28) se dibujaba encima de él pese a ese orden de dibujo.
 - **300 ms de duración.** El celular graba la transmisión a unos 30 cuadros por segundo, así que 300 ms son unos 9 cuadros: alcanza para detectarlo aunque se pierdan algunos.
 - Aparece y desaparece de golpe, sin fundidos, para que su inicio sea un cuadro preciso.
 
@@ -99,13 +99,23 @@ Se puede agregar información después del nombre (`acierto objetivo 3`), siempr
 - Grabar a **30 cuadros por segundo o más**, en la resolución que permita la app.
 - Tras cada partida, revisar que en el video se vean los destellos, sobre todo el primero y el último.
 
-### 6.2 Tablet (pendiente)
+### 6.2 Tablet (rama `TabletBranch`)
 
-La versión de tablet todavía no existe. Recomendaciones para cuando exista:
+El juego graba su propia pantalla (`GrabacionPantalla.cs` + plugin `Assets/Plugins/Android/GrabadorPantalla.java`, con MediaProjection de Android):
 
-- Lo más sencillo es la **grabación de pantalla de Android** (o la que traiga la tablet) iniciada antes de la partida. El destello se puede dibujar como un cuadrado blanco con marco negro en la parte superior central de la pantalla, con el mismo tamaño relativo y la misma duración.
-- Si el juego puede grabar su propia pantalla, mejor: evita depender de otra app.
-- En la tablet no hay recorte de bordes, pero se recomienda la misma posición para que la detección funcione igual en las dos versiones.
+- **Al abrir la app** aparece el diálogo del sistema para grabar la pantalla. El investigador lo acepta (si ofrece elegir, **toda la pantalla**) antes de entregar la tablet. Desde ahí se graba la bienvenida, la práctica, la partida y la pantalla final.
+- La grabación se **detiene sola** al salir del juego (botón Salir, cierre automático a los 60 s o Atrás dos veces), después del último destello.
+- Si el permiso se rechaza o la grabación falla, la app muestra un aviso: cerrarla y volver a abrirla. Mientras graba, Android muestra una notificación fija «Grabando la pantalla de la partida».
+- Archivo: `screen_<participante>_<fecha UTC>.mp4`, H.264 a 30 cuadros por segundo, 1840 × 1104 en la Galaxy Tab S6 Lite (la pantalla de 2000 × 1200 reducida a lo que admite el codificador, con la misma proporción), **sin audio**. Queda junto al NDJSON en `/sdcard/Android/data/com.UTP.ColorQuestTablet/files/`.
+- El NDJSON registra `screen_recording` (estado, archivo, tamaño y hora LSL aproximada del inicio) justo después de `display_info`, y `screen_recording_stop` después de `app_exit`. La alineación fina se hace con los destellos, igual que en la Quest.
+- **No cerrar la app desde Recientes ni apagar la pantalla a mitad de la partida:** el MP4 sólo queda reproducible si la grabación se detiene bien (deslizar la app fuera de Recientes la detiene; que el sistema mate la app, no).
+- El destello es el mismo de la Quest, colgado de la cámara de la tablet: arriba del centro de la pantalla, con el mismo tamaño angular y la misma duración.
+
+**Cómo traer las grabaciones al PC** (2026-11-11): por cable, con `tet-video/scripts/tablet_videos.py` en el repositorio de TET; tiene los mismos comandos que `quest_videos.py`, el de la Quest (`estado`, `listar`, `copiar`, `borrar`, `sesion`). Deja el archivo tal cual en `<carpeta>/original/`, comprueba que llegó completo y corre `integridad.py`. También sirve el explorador de Windows o `adb pull`.
+
+**Ojo con la hora del nombre:** la fecha del nombre va en **UTC** y la fecha de modificación del archivo, en hora local; con eso solo, el tramo del video salía al revés. `tablet_videos.py` lo corrige comparando las dos y moviendo la hora del nombre por husos, así que no hace falta cambiar nada en el juego; si es fácil, poner la hora local en el nombre evita la ambigüedad. Visto en `screen_JITO_20261111_203424.mp4`, grabado a las 15:34 locales (UTC−5).
+
+**Falta comprobar** con una grabación de la tablet que tenga destellos: la detección automática de la app TET, `scripts/integridad.py`, y que nada del juego se dibuje encima del destello mientras dura (§3.2), como pasó en la Quest.
 
 ## 7. Exportar los eventos para la app TET
 
@@ -135,7 +145,7 @@ tiempo,evento
 ## 8. Lista de comprobación antes del piloto
 
 1. El stream de marcadores aparece en LabRecorder junto al EEG.
-2. Al pulsar «Iniciar partida» llegan `sync_1` e `inicio partida`, y se ve el destello en el visor.
+2. Unos 0,5 s después de pulsar «Iniciar partida» llegan `sync_1` e `inicio partida`, y se ve el destello en el visor.
 3. Durante una partida de 5 minutos llegan unos 6 o 7 marcadores `sync_k`, cada uno separado del anterior por unos 60 s.
 4. En el video grabado en el celular se ven **todos** los destellos, completos y sin recorte.
 5. El CSV exportado tiene una fila `sync_k` por cada destello del video.

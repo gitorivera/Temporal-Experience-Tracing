@@ -376,7 +376,8 @@ El destello es un cuadrado blanco con marco negro, **fijo en la pantalla** (GAME
 **Paso 2: medir el recuadro en todo el video.**
 - En cada cuadro, la fracción de píxeles del interior del recuadro (sin los bordes) que son blanco casi puro.
 - Un destello es una racha de cuadros con fracción > 0,8 que dura entre 0,1 y 0,8 s. `V_k` es el `mediaTime` del primer cuadro de la racha.
-- **Refinamiento:** como a 4× el navegador puede saltarse cuadros, alrededor de cada destello se recorre el video cuadro por cuadro (±0,5 s) para encontrar el primer cuadro blanco. Precisión esperada: un cuadro (unos 33 ms a 30 fps).
+- **Refinamiento:** como a 4× el navegador puede saltarse cuadros, alrededor de cada destello se recorre el video cuadro por cuadro (±0,5 s) para encontrar el primer cuadro blanco. Precisión esperada: un cuadro (unos 33 ms a 30 fps). Aquí la racha se mide con fracción ≥ 0,5 (2026-11-01): solo se mira cerca de donde debe estar el destello, y un texto encima deja los primeros cuadros por debajo de 0,8, lo que en exp010 atrasaba el destello 166 ms sin ningún aviso.
+- **Segunda búsqueda** (2026-11-01): para cada fila `sync` sin destello, si ya se halló alguno, se refina también alrededor de donde debe estar. Rescata un destello que el paso 1 no ve, por ejemplo cuando algo ya blanco justo antes lo parte en pedazos (exp010). La tabla de §16.5 lo marca como «segunda búsqueda» para revisarlo.
 - Si el número de destellos no coincide con el de filas `sync`, se avisa y se pasa a la revisión de §16.5.
 
 Se muestra una barra de progreso y se puede cancelar. Para un video de 5 minutos se espera menos de 2 minutos de análisis.

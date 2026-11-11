@@ -9,6 +9,12 @@ export const FLASH_MIN_S = 0.1;
 export const FLASH_MAX_S = 0.8;
 /** Fracción del interior del recuadro que debe ser blanca para contar como destello. */
 export const FLASH_ON_FRACTION = 0.8;
+/**
+ * Umbral del refinamiento, que solo mira cerca de donde debe estar un destello. Un texto encima lo
+ * deja en 67–88 % y el fondo no pasa de 18 % (exp010, 2026-10-28). Con FLASH_ON_FRACTION se saltaba
+ * los primeros cuadros, que no llegaban al 80 %, y el destello salía 166 ms tarde sin ningún aviso.
+ */
+export const FLASH_REFINE_FRACTION = 0.5;
 /** Margen de cada lado que se descarta al medir el interior del recuadro (el borde se mezcla con el marco). */
 export const BOX_INSET = 0.15;
 
@@ -62,18 +68,18 @@ export interface Run {
   frames: number;
 }
 
-/** Rachas de cuadros con fracción ≥ FLASH_ON_FRACTION que duran entre FLASH_MIN_S y FLASH_MAX_S. */
-export function findRuns(samples: readonly FrameSample[]): Run[] {
+/** Rachas de cuadros con fracción ≥ `onFraction` que duran entre FLASH_MIN_S y FLASH_MAX_S. */
+export function findRuns(samples: readonly FrameSample[], onFraction = FLASH_ON_FRACTION): Run[] {
   const s = [...samples].sort((a, b) => a.t - b.t);
   const runs: Run[] = [];
   let i = 0;
   while (i < s.length) {
-    if (s[i]!.f < FLASH_ON_FRACTION) {
+    if (s[i]!.f < onFraction) {
       i++;
       continue;
     }
     let j = i;
-    while (j + 1 < s.length && s[j + 1]!.f >= FLASH_ON_FRACTION) j++;
+    while (j + 1 < s.length && s[j + 1]!.f >= onFraction) j++;
     const end = j + 1 < s.length ? s[j + 1]!.t : s[j]!.t;
     const dur = end - s[i]!.t;
     // Una racha que empieza en el primer cuadro medido puede haber empezado antes: su inicio no es fiable.
@@ -259,15 +265,11 @@ export function findRegions(acc: PulseAccumulator): Region[] {
     if (g) g.push(b);
     else groups.push([b]);
   }
-  const median = (xs: number[]) => {
-    const s = [...xs].sort((a, b) => a - b);
-    return s[Math.floor(s.length / 2)]!;
-  };
+  // Píxeles del bloque: el más completo da el recuadro, porque un texto encima deja bloques recortados.
+  // El marco negro del destello impide que un blanco vecino se le pegue y lo agrande.
+  const size = (b: Blob) => b.fill * (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   return groups.map((g) => {
-    const x0 = median(g.map((b) => b.x0));
-    const y0 = median(g.map((b) => b.y0));
-    const x1 = median(g.map((b) => b.x1));
-    const y1 = median(g.map((b) => b.y1));
+    const { x0, y0, x1, y1 } = g.reduce((a, b) => (size(b) > size(a) ? b : a));
     return {
       box: { x: x0 / W, y: y0 / H, w: (x1 - x0 + 1) / W, h: (y1 - y0 + 1) / H },
       fill: g.reduce((a, b) => a + b.fill, 0) / g.length,
