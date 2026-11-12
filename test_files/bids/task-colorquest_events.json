@@ -1,0 +1,35 @@
+{
+  "onset": {
+    "Description": "Inicio del evento, en segundos desde el comienzo de la grabación de EEG de esa pasada",
+    "Units": "s"
+  },
+  "duration": {
+    "Description": "Duración del evento en segundos; 0 en los eventos instantáneos, que son casi todos",
+    "Units": "s"
+  },
+  "trial_type": {
+    "Description": "Tipo de evento del juego, normalizado a partir de la etiqueta del stream JuegoEventos",
+    "Levels": {
+      "sync": "destello de sincronización en pantalla (etiqueta sync_N)",
+      "inicio_partida": "comienza la partida",
+      "inicio_nivel": "comienza un nivel",
+      "acierto": "el jugador toca el objetivo correcto",
+      "error": "el jugador toca un objetivo equivocado",
+      "premio": "el juego entrega puntos",
+      "fin_partida": "termina la partida"
+    }
+  },
+  "value": {
+    "Description": "Número que acompaña a la etiqueta: el objetivo en acierto y error, el nivel en inicio_nivel, los puntos en premio y el orden del destello en sync. n/a si la etiqueta no trae número"
+  },
+  "marker": {
+    "Description": "Etiqueta cruda tal como viene en el stream, por ejemplo «acierto objetivo 3» o «premio puntos 50»"
+  },
+  "source": {
+    "Description": "De dónde salió el evento",
+    "Levels": {
+      "lsl": "stream JuegoEventos del XDF",
+      "ndjson": "registro del juego en el aparato (events_*.ndjson)"
+    }
+  }
+}

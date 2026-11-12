@@ -1,0 +1,14 @@
+{
+  "TaskName": "colorquest",
+  "TaskDescription": "Juego ColorQuest: el participante busca y toca objetivos de un color indicado. La misma tarea en las dos modalidades; cambia la interfaz (Quest 3 o tablet).",
+  "Instructions": "Juega como te sientas cómodo; después vas a ver la grabación y marcar cómo te sentiste.",
+  "InstitutionName": "Universidad Tecnológica de Pereira",
+  "Manufacturer": "BioSemi",
+  "ManufacturersModelName": "ActiveTwo",
+  "PowerLineFrequency": 60,
+  "EEGReference": "CMS/DRL (BioSemi), re-referenciado en el análisis",
+  "EEGGround": "DRL (BioSemi)",
+  "SoftwareFilters": "n/a",
+  "HardwareFilters": "n/a",
+  "RecordingType": "continuous"
+}

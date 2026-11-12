@@ -1,0 +1,18 @@
+{
+  "Name": "Trazas TET",
+  "BIDSVersion": "1.9.0",
+  "DatasetType": "derivative",
+  "GeneratedBy": [
+    {
+      "Name": "tet-video",
+      "Version": "1.0.0",
+      "Description": "PWA de Temporal Experience Tracing: el participante traza cada dimensión sobre el video de su propia partida",
+      "CodeURL": "https://github.com/gitorivera/tet-app"
+    }
+  ],
+  "SourceDatasets": [
+    {
+      "URL": "../.."
+    }
+  ]
+}

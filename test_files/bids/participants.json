@@ -1,0 +1,38 @@
+{
+  "age": {
+    "Description": "Edad del participante en el dia de la visita",
+    "Units": "years"
+  },
+  "sex": {
+    "Description": "Sexo informado por el participante",
+    "Levels": {
+      "M": "masculino",
+      "F": "femenino",
+      "O": "otro",
+      "n/a": "no informado"
+    }
+  },
+  "handedness": {
+    "Description": "Mano dominante",
+    "Levels": {
+      "R": "diestro",
+      "L": "zurdo",
+      "A": "ambidiestro",
+      "n/a": "no informado"
+    }
+  },
+  "order": {
+    "Description": "Orden de las dos modalidades en la visita (contrabalanceado entre sujetos)",
+    "Levels": {
+      "tablet_quest": "run-1 en tablet, run-2 en Quest",
+      "quest_tablet": "run-1 en Quest, run-2 en tablet"
+    }
+  },
+  "awareness": {
+    "Description": "Manipulacion entre sujetos: si se le dijo al participante que modalidad estaba usando",
+    "Levels": {
+      "aware": "informado",
+      "unaware": "no informado"
+    }
+  }
+}
